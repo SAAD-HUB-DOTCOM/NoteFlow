@@ -1,0 +1,73 @@
+/**
+ * Drawn icon set — consistent 1.5px stroke, currentColor, 24×24 viewBox.
+ * (Craft floor: icons are drawn SVG in one stroke/weight, never emoji or unicode glyphs.)
+ */
+import type { SVGProps } from "react";
+
+type IconProps = SVGProps<SVGSVGElement>;
+
+function Icon({ children, ...props }: IconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Icon>
+  );
+}
+
+export function ChecklistIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m3.5 6 1.5 1.5L8 4.5" />
+      <path d="m3.5 13 1.5 1.5L8 11.5" />
+      <path d="M12 6h8.5" />
+      <path d="M12 13h8.5" />
+      <path d="M12 20h8.5" />
+      <path d="m3.5 20 1.5 1.5L8 18.5" />
+    </Icon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 6 9 17l-5-5" />
+    </Icon>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </Icon>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19" />
+      <circle cx="10" cy="8" r="3.2" />
+      <path d="M20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4" />
+      <path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6" />
+    </Icon>
+  );
+}
