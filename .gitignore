@@ -1,0 +1,6 @@
+# OS / editor cruft
+.DS_Store
+*.tmp
+.agent-logs/*.tmp
+
+# NOTE: .agent-logs/ is intentionally committed (ships with the repo).
