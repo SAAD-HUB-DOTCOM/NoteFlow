@@ -3,7 +3,9 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import type { MeetingCardData } from "@/lib/dashboard";
 import type { DateGroup } from "@/lib/format";
+import { searchIndex, countMatches, type SearchEntry } from "@/lib/search";
 import { MeetingCard } from "@/components/MeetingCard";
+import { SearchResults } from "@/components/SearchResults";
 import { Logo } from "@/components/Logo";
 import { SearchIcon } from "@/components/icons";
 
@@ -12,9 +14,11 @@ const GROUP_ORDER: DateGroup[] = ["Today", "This week", "Earlier"];
 export function MeetingsView({
   cards,
   totalOpenActions,
+  searchEntries,
 }: {
   cards: MeetingCardData[];
   totalOpenActions: number;
+  searchEntries: SearchEntry[];
 }) {
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -35,18 +39,19 @@ export function MeetingsView({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const q = query.trim().toLowerCase();
-  const filtered = useMemo(
-    () => (q ? cards.filter((c) => c.searchText.includes(q)) : cards),
-    [cards, q],
+  const q = query.trim();
+  const searchGroups = useMemo(
+    () => (q ? searchIndex(searchEntries, q) : []),
+    [searchEntries, q],
   );
+  const resultCount = countMatches(searchGroups);
 
-  const groups = useMemo(() => {
+  const dateGroups = useMemo(() => {
     return GROUP_ORDER.map((group) => ({
       group,
-      items: filtered.filter((c) => c.group === group),
+      items: cards.filter((c) => c.group === group),
     })).filter((g) => g.items.length > 0);
-  }, [filtered]);
+  }, [cards]);
 
   const subtitle =
     cards.length === 0
@@ -87,7 +92,7 @@ export function MeetingsView({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search meetings, people, and summaries"
+            placeholder="Search across all meetings — people, summaries, transcripts"
             aria-label="Search meetings"
             className="w-full rounded-lg border border-border bg-surface py-2.5 pl-11 pr-4 text-sm text-foreground placeholder:text-muted transition-colors focus:border-primary focus:outline-none"
           />
@@ -98,11 +103,22 @@ export function MeetingsView({
 
         {cards.length === 0 ? (
           <EmptyState />
-        ) : filtered.length === 0 ? (
-          <NoResults query={query} onClear={() => setQuery("")} />
+        ) : q ? (
+          searchGroups.length === 0 ? (
+            <NoResults query={query} onClear={() => setQuery("")} />
+          ) : (
+            <div>
+              <p className="mb-4 text-sm text-muted">
+                {resultCount} {resultCount === 1 ? "match" : "matches"} across{" "}
+                {searchGroups.length}{" "}
+                {searchGroups.length === 1 ? "meeting" : "meetings"}
+              </p>
+              <SearchResults groups={searchGroups} query={query} />
+            </div>
+          )
         ) : (
           <div className="space-y-8">
-            {groups.map(({ group, items }) => (
+            {dateGroups.map(({ group, items }) => (
               <section key={group}>
                 <h2 className="mb-3 text-sm font-medium text-muted">{group}</h2>
                 <div className="space-y-3">

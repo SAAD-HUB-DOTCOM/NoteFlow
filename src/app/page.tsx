@@ -1,5 +1,6 @@
 import { meetings } from "@/data/meetings";
 import { buildDashboardCards } from "@/lib/dashboard";
+import { buildSearchIndex } from "@/lib/search";
 import { MeetingsView } from "@/components/MeetingsView";
 
 export default function Home() {
@@ -18,5 +19,11 @@ export default function Home() {
     0,
   );
 
-  return <MeetingsView cards={cards} totalOpenActions={totalOpenActions} />;
+  return (
+    <MeetingsView
+      cards={cards}
+      totalOpenActions={totalOpenActions}
+      searchEntries={buildSearchIndex(meetings)}
+    />
+  );
 }
