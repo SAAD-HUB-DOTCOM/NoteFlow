@@ -1,10 +1,14 @@
-"""Alembic environment — targets the app's metadata and reads DATABASE_URL from settings."""
+"""Alembic environment — targets the app's metadata and migrates via DIRECT_URL.
+
+Migrations must use Supabase's SESSION pooler (DIRECT_URL, port 5432), NOT the runtime
+TRANSACTION pooler (DATABASE_URL, port 6543). DATABASE_URL is only a last-resort fallback.
+"""
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.config import get_settings
+from app.config import get_settings, sanitize_db_url
 from app.db import Base
 import app.models  # noqa: F401  (import for side effect: registers all models on Base.metadata)
 
@@ -13,8 +17,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-if settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+migration_url = settings.direct_url or settings.database_url
+if migration_url:
+    config.set_main_option("sqlalchemy.url", sanitize_db_url(migration_url))
 
 target_metadata = Base.metadata
 

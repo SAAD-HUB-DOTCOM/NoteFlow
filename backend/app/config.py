@@ -5,7 +5,21 @@ configured; protected routes fail with a truthful "not configured" error rather 
 faking success (per note-flow.md §0).
 """
 from functools import lru_cache
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def sanitize_db_url(url: str) -> str:
+    """Drop Prisma's `?pgbouncer=true` query param — psycopg2/SQLAlchemy must not receive it
+    (transaction pooling is handled via engine config / NullPool instead)."""
+    parts = urlsplit(url)
+    query = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if k.lower() != "pgbouncer"
+    ]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
 class Settings(BaseSettings):
@@ -14,8 +28,12 @@ class Settings(BaseSettings):
     environment: str = "development"
     frontend_url: str = "http://localhost:3000"
 
-    # Database (Supabase Postgres). Sync driver: postgresql+psycopg://...
+    # Runtime DB connection — Supabase shared TRANSACTION pooler (port 6543).
+    # Driver: postgresql+psycopg2://...  (paired with NullPool in app/db.py to avoid double-pooling)
     database_url: str | None = None
+
+    # Migrations DB connection — Supabase shared SESSION pooler (port 5432). Used by Alembic only.
+    direct_url: str | None = None
 
     # Supabase
     supabase_url: str | None = None
