@@ -25,9 +25,25 @@ export function formatDuration(seconds: number): string {
 
 /** Precise mm:ss for players/timestamps (e.g. 1122 → "18:42"). */
 export function formatTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
+  const safe = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+const FULL_DATE = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/**
+ * Fixed, absolute date for a meeting header (e.g. "Wed, Sep 17, 2026"). Uses an explicit
+ * en-US format so server and client agree — no relative "now", so no hydration mismatch.
+ */
+export function formatFullDate(startedAt: string): string {
+  return FULL_DATE.format(new Date(startedAt));
 }
 
 export type DateGroup = "Today" | "This week" | "Earlier";
