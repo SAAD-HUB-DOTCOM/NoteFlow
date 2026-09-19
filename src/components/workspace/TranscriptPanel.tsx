@@ -203,7 +203,7 @@ export function TranscriptPanel({
                     {initials}
                   </span>
 
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1 max-w-[68ch]">
                     <span className="mb-0.5 flex items-center gap-2">
                       <span
                         className={`text-sm font-semibold ${

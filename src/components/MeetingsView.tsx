@@ -7,7 +7,7 @@ import { searchIndex, countMatches, type SearchEntry } from "@/lib/search";
 import { MeetingCard } from "@/components/MeetingCard";
 import { SearchResults } from "@/components/SearchResults";
 import { Logo } from "@/components/Logo";
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon, MicIcon } from "@/components/icons";
 
 const GROUP_ORDER: DateGroup[] = ["Today", "This week", "Earlier"];
 
@@ -69,10 +69,14 @@ export function MeetingsView({
           <button
             type="button"
             disabled
+            aria-disabled="true"
             title="Recording capture arrives in a later milestone — meetings are seeded for now."
-            className="cursor-not-allowed rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted/70"
+            className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted"
           >
             New recording
+            <span className="rounded bg-background/70 px-1.5 py-0.5 text-[0.65rem] font-medium text-muted">
+              Soon
+            </span>
           </button>
         </div>
       </header>
@@ -144,7 +148,7 @@ function EmptyState() {
   return (
     <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
       <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-border bg-surface">
-        <SearchIcon className="h-5 w-5 text-muted" />
+        <MicIcon className="h-5 w-5 text-muted" />
       </div>
       <p className="text-base font-medium text-foreground">No meetings yet</p>
       <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">

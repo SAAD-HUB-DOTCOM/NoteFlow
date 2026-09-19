@@ -37,7 +37,7 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
   const tabs: { id: TabId; label: string; badge?: number }[] = [
     { id: "summary", label: "Summary" },
     { id: "actions", label: "Action Items", badge: openActions || undefined },
-    { id: "transcript", label: "Transcript", badge: meeting.transcript.length || undefined },
+    { id: "transcript", label: "Transcript" },
     { id: "ask", label: "Ask NoteFlow" },
   ];
 
