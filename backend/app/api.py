@@ -1,12 +1,26 @@
 """API v1 routes — Phase 1 (health, me, preferences). Capture/webhooks land in Phase 3."""
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import Profile, UserPreferences
-from app.schemas import HealthOut, MeOut, MeUpdate, PreferencesOut, PreferencesUpdate
+from app.models import Meeting, Profile, UserPreferences
+from app.schemas import (
+    CaptureIn,
+    HealthOut,
+    MeetingOut,
+    MeOut,
+    MeUpdate,
+    PreferencesOut,
+    PreferencesUpdate,
+)
 from app.security import CurrentUser, get_current_user
+from app.services.recall import (
+    RecallNotConfigured,
+    get_recall_service,
+    provider_from_url,
+)
 
 router = APIRouter()
 
@@ -106,3 +120,92 @@ def update_preferences(
         default_summary_template=prefs.default_summary_template,
         recording_notice_enabled=prefs.recording_notice_enabled,
     )
+
+
+# ── Meetings (Phase 3: manual Recall capture) ──────────────────────────────────
+
+@router.post("/meetings/capture", response_model=MeetingOut, tags=["meetings"])
+def capture_meeting(
+    payload: CaptureIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> Meeting:
+    """Send a NoteFlow bot to a pasted meeting URL (manual/impromptu capture)."""
+    provider = provider_from_url(payload.meeting_url)
+    if provider is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported meeting link. Use a Google Meet, Zoom, or Microsoft Teams URL.",
+        )
+    try:
+        recall = get_recall_service(settings.recall_api_key, settings.recall_region)
+    except RecallNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Meeting capture isn't configured yet (RECALL_API_KEY missing).",
+        )
+
+    meeting = Meeting(
+        owner_user_id=user.id,
+        title=payload.title,
+        source="manual",
+        provider=provider,
+        meeting_url=payload.meeting_url,
+        status="draft",
+    )
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+
+    try:
+        bot = recall.create_bot(payload.meeting_url)
+    except httpx.HTTPStatusError as exc:
+        meeting.status = "failed"
+        meeting.processing_error_code = "recall_create_bot"
+        meeting.processing_error_message = f"Recall responded {exc.response.status_code}"
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't start the NoteFlow bot for this meeting.",
+        )
+    except httpx.HTTPError as exc:
+        meeting.status = "failed"
+        meeting.processing_error_code = "recall_unreachable"
+        meeting.processing_error_message = str(exc)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't reach Recall to start the bot.",
+        )
+
+    meeting.recall_bot_id = bot.get("id")
+    meeting.status = "joining"
+    db.commit()
+    db.refresh(meeting)
+    return meeting
+
+
+@router.get("/meetings", response_model=list[MeetingOut], tags=["meetings"])
+def list_meetings(
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Meeting]:
+    return (
+        db.query(Meeting)
+        .filter(Meeting.owner_user_id == user.id)
+        .order_by(Meeting.created_at.desc())
+        .all()
+    )
+
+
+@router.get("/meetings/{meeting_id}", response_model=MeetingOut, tags=["meetings"])
+def get_meeting(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Meeting:
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    return meeting

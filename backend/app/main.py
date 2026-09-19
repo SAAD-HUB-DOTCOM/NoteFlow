@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
 from app.config import get_settings
+from app.webhooks import router as webhook_router
 
 settings = get_settings()
 
@@ -19,6 +20,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(webhook_router)  # /webhooks/recall — Recall-signature-verified, no JWT
 
 
 @app.get("/")
