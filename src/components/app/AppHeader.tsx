@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { MicIcon } from "@/components/icons";
+import { RecordMeetingButton } from "@/components/app/RecordMeetingButton";
 
 /** Authenticated app chrome: brand, (soon) capture entry, account + sign out. */
 export function AppHeader({ email }: { email: string | null }) {
@@ -11,16 +11,7 @@ export function AppHeader({ email }: { email: string | null }) {
           <Logo />
         </Link>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled
-            title="Meeting capture is wired up in the next step."
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-primary/60 px-3.5 py-2 text-sm font-medium text-white/80"
-          >
-            <MicIcon className="h-4 w-4" />
-            Record meeting
-            <span className="rounded bg-background/30 px-1.5 py-0.5 text-[0.65rem]">Soon</span>
-          </button>
+          <RecordMeetingButton />
           {email && (
             <span className="hidden max-w-[12rem] truncate text-sm text-muted sm:inline">
               {email}

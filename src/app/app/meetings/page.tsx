@@ -1,4 +1,5 @@
 import { MicIcon } from "@/components/icons";
+import { RecordMeetingButton } from "@/components/app/RecordMeetingButton";
 
 /**
  * My Meetings (authenticated). Phase 2 ships the real, honest shell: a signed-in user with no
@@ -23,16 +24,9 @@ export default function MeetingsPage() {
           Record your first meeting and NoteFlow will capture it, transcribe it, and write the
           summary, action items, and highlights for you.
         </p>
-        <button
-          type="button"
-          disabled
-          title="Meeting capture is wired up in the next step."
-          className="mt-5 inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-primary/60 px-4 py-2 text-sm font-medium text-white/80"
-        >
-          <MicIcon className="h-4 w-4" />
-          Record a meeting
-          <span className="rounded bg-background/30 px-1.5 py-0.5 text-[0.65rem]">Soon</span>
-        </button>
+        <div className="mt-5 flex justify-center">
+          <RecordMeetingButton label="Record a meeting" />
+        </div>
       </div>
     </main>
   );
