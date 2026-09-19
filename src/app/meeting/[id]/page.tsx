@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getMeeting, meetings } from "@/data/meetings";
 import { Logo } from "@/components/Logo";
 import { ChevronRightIcon } from "@/components/icons";
+import { ShareButton } from "@/components/ShareButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { MeetingWorkspace } from "@/components/workspace/MeetingWorkspace";
 
@@ -25,6 +26,7 @@ export default async function MeetingPage({
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <Logo />
+          <ShareButton meetingId={meeting.id} />
         </div>
       </header>
 
