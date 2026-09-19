@@ -10,8 +10,9 @@
  */
 
 /** Where a meeting's data actually came from — tracked internally, never used to dress up
- *  generated content as a genuine recording (PLAN §7). */
-export type MeetingSource = "real" | "demo" | "generated";
+ *  generated content as a genuine recording (PLAN §7). `ingested` = produced by the real
+ *  AssemblyAI + Groq pipeline (Level 3) from an actual recording. */
+export type MeetingSource = "real" | "demo" | "generated" | "ingested";
 
 /** A person on the call. Doubles as the diarization identity for transcript lines. */
 export interface Speaker {
