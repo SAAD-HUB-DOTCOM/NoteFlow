@@ -11,16 +11,19 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   CloseIcon,
+  BookmarkIcon,
+  BookmarkFilledIcon,
 } from "@/components/icons";
 
 /**
- * The transcript — the core synchronized surface (PLAN §4). The segment where
- * start <= currentTime < end is highlighted as playback moves; clicking any segment (or its
- * timestamp) seeks the player via the shared seekTo primitive; the active segment auto-scrolls
- * into view unless the user just scrolled manually.
+ * The transcript — the core synchronized surface (PLAN §4). The active segment
+ * (start <= currentTime < end) highlights and auto-scrolls during playback; clicking a segment
+ * seeks via the shared seekTo primitive.
  *
- * In-meeting search: matches are term-highlighted; the match counter + up/down (or Enter) step
- * through hits by calling the same seekTo — so jumping to a match also plays and scrolls to it.
+ * Search: matches are term-highlighted; the counter + up/down (or Enter) step through hits by
+ * reusing seekTo. Highlights (PLAN §3, Level 1.5): bookmark a moment (teal accent — the design
+ * system reserves accent for highlights), then filter to just those moments and jump to any of
+ * them with the same seekTo.
  */
 export function TranscriptPanel({
   segments,
@@ -43,6 +46,8 @@ export function TranscriptPanel({
 
   const [query, setQuery] = useState("");
   const [matchPos, setMatchPos] = useState(0);
+  const [highlights, setHighlights] = useState<Set<string>>(new Set());
+  const [highlightsOnly, setHighlightsOnly] = useState(false);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,7 +68,16 @@ export function TranscriptPanel({
     seekTo(segments[matches[wrapped]].start);
   }
 
-  // Any manual scroll gesture pauses auto-scroll briefly so we don't fight the reader.
+  function toggleHighlight(id: string) {
+    setHighlights((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Manual scroll gestures pause auto-scroll briefly so we don't fight the reader.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -84,7 +98,7 @@ export function TranscriptPanel({
     if (performance.now() < pausedUntilRef.current) return;
     const container = scrollRef.current;
     const el = container.querySelector<HTMLElement>(`[data-seg="${activeIndex}"]`);
-    if (!el) return;
+    if (!el || el.offsetParent === null) return; // skip if hidden (e.g. highlights-only filter)
 
     const cTop = container.scrollTop;
     const cBottom = cTop + container.clientHeight;
@@ -112,10 +126,12 @@ export function TranscriptPanel({
   }
 
   const hasQuery = query.trim().length > 0;
+  const highlightCount = highlights.size;
+  const showNoHighlights = highlightsOnly && highlightCount === 0;
 
   return (
     <div className="rounded-xl border border-border bg-surface/40">
-      {/* Search within transcript */}
+      {/* Search + highlights controls */}
       <div className="flex items-center gap-2 border-b border-border p-2.5">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -171,71 +187,120 @@ export function TranscriptPanel({
             </button>
           </div>
         )}
+
+        {highlightCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setHighlightsOnly((v) => !v)}
+            aria-pressed={highlightsOnly}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm tabular-nums transition-colors ${
+              highlightsOnly
+                ? "border-accent/50 bg-accent/10 text-foreground"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+          >
+            <BookmarkFilledIcon className="h-3.5 w-3.5 text-accent" />
+            {highlightCount}
+          </button>
+        )}
       </div>
 
       <div
         ref={scrollRef}
         className="max-h-[calc(100vh-23rem)] min-h-[20rem] overflow-y-auto p-2 sm:p-3"
       >
-        <ol className="space-y-0.5">
-          {segments.map((seg, i) => {
-            const speaker = speakerById.get(seg.speakerId);
-            const name = speaker?.name ?? "Speaker";
-            const initials = speaker?.initials ?? initialsFrom(name);
-            const isActive = i === activeIndex;
-            const isCurrentMatch = hasQuery && matches[matchPos] === i;
+        {showNoHighlights ? (
+          <div className="px-4 py-14 text-center">
+            <p className="text-sm font-medium text-foreground">No highlights yet</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
+              Bookmark a moment with the icon on any line, then revisit it here.
+            </p>
+          </div>
+        ) : (
+          <ol className="space-y-0.5">
+            {segments.map((seg, i) => {
+              const speaker = speakerById.get(seg.speakerId);
+              const name = speaker?.name ?? "Speaker";
+              const initials = speaker?.initials ?? initialsFrom(name);
+              const isActive = i === activeIndex;
+              const isCurrentMatch = hasQuery && matches[matchPos] === i;
+              const isHighlighted = highlights.has(seg.id);
+              const hidden = highlightsOnly && !isHighlighted;
 
-            return (
-              <li key={seg.id} data-seg={i}>
-                <button
-                  type="button"
-                  onClick={() => seekTo(seg.start)}
-                  aria-current={isActive ? "true" : undefined}
-                  className={`flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                    isActive
-                      ? "bg-surface-hover"
-                      : isCurrentMatch
-                        ? "bg-surface-hover/60"
-                        : "hover:bg-surface/80"
-                  }`}
-                >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center self-start rounded-full bg-surface-hover text-[0.65rem] font-medium text-foreground/90 ring-1 ring-border/60">
-                    {initials}
-                  </span>
+              const rowBg = isActive
+                ? "bg-surface-hover"
+                : isHighlighted
+                  ? "bg-accent/5"
+                  : isCurrentMatch
+                    ? "bg-surface-hover/60"
+                    : "hover:bg-surface/80";
 
-                  <span className="min-w-0 flex-1 max-w-[68ch]">
-                    <span className="mb-0.5 flex items-center gap-2">
-                      <span
-                        className={`text-sm font-semibold ${
-                          isActive ? "text-primary" : "text-foreground/90"
-                        }`}
-                      >
-                        {name}
+              return (
+                <li key={seg.id} data-seg={i} className={hidden ? "hidden" : undefined}>
+                  <div className={`group flex items-start gap-1 rounded-lg ${rowBg}`}>
+                    <button
+                      type="button"
+                      onClick={() => seekTo(seg.start)}
+                      aria-current={isActive ? "true" : undefined}
+                      className="flex min-w-0 flex-1 gap-3 rounded-lg px-3 py-2.5 text-left"
+                    >
+                      <span className="grid h-7 w-7 shrink-0 place-items-center self-start rounded-full bg-surface-hover text-[0.65rem] font-medium text-foreground/90 ring-1 ring-border/60">
+                        {initials}
                       </span>
-                      <span className="font-mono text-xs tabular-nums text-muted">
-                        {formatTimestamp(seg.start)}
-                      </span>
-                      {isActive && isPlaying && (
-                        <span className="flex items-end gap-0.5" aria-label="Now playing">
-                          <span className="eq-bar" style={{ animationDelay: "0ms" }} />
-                          <span className="eq-bar" style={{ animationDelay: "150ms" }} />
-                          <span className="eq-bar" style={{ animationDelay: "300ms" }} />
+
+                      <span className="min-w-0 flex-1 max-w-[68ch]">
+                        <span className="mb-0.5 flex items-center gap-2">
+                          <span
+                            className={`text-sm font-semibold ${
+                              isActive ? "text-primary" : "text-foreground/90"
+                            }`}
+                          >
+                            {name}
+                          </span>
+                          <span className="font-mono text-xs tabular-nums text-muted">
+                            {formatTimestamp(seg.start)}
+                          </span>
+                          {isActive && isPlaying && (
+                            <span className="flex items-end gap-0.5" aria-label="Now playing">
+                              <span className="eq-bar" style={{ animationDelay: "0ms" }} />
+                              <span className="eq-bar" style={{ animationDelay: "150ms" }} />
+                              <span className="eq-bar" style={{ animationDelay: "300ms" }} />
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <HighlightedText
-                      text={seg.text}
-                      query={hasQuery ? query : ""}
-                      className={`block text-sm leading-relaxed ${
-                        isActive ? "text-foreground" : "text-foreground/75"
+                        <HighlightedText
+                          text={seg.text}
+                          query={hasQuery ? query : ""}
+                          className={`block text-sm leading-relaxed ${
+                            isActive ? "text-foreground" : "text-foreground/75"
+                          }`}
+                        />
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleHighlight(seg.id)}
+                      aria-pressed={isHighlighted}
+                      aria-label={isHighlighted ? "Remove highlight" : "Highlight this moment"}
+                      className={`mr-1 mt-2 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors hover:bg-surface-hover ${
+                        isHighlighted
+                          ? "text-accent"
+                          : "text-muted/50 hover:text-foreground focus-visible:text-foreground"
                       }`}
-                    />
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+                    >
+                      {isHighlighted ? (
+                        <BookmarkFilledIcon className="h-4 w-4" />
+                      ) : (
+                        <BookmarkIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </div>
     </div>
   );
