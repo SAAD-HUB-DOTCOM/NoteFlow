@@ -10,10 +10,12 @@ settings = get_settings()
 
 app = FastAPI(title="NoteFlow API", version="0.1.0")
 
-# Strict CORS: allow only the configured frontend origin (§25).
+# Strict CORS: allow only the configured frontend origin(s). FRONTEND_URL may be a
+# comma-separated list (e.g. local dev + the deployed Vercel domain).
+_allowed_origins = [o.strip() for o in settings.frontend_url.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
