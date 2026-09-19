@@ -45,6 +45,25 @@
   }
 }
 
+/* "Now playing" equalizer on the active transcript line. */
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bar {
+  width: 2px;
+  height: 12px;
+  border-radius: 9999px;
+  background-color: #6c5ce7;
+  transform-origin: bottom;
+  animation: eq 0.9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
