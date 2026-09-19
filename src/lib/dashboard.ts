@@ -22,8 +22,6 @@ export interface MeetingCardData {
   openActions: number;
   group: DateGroup;
   groupOrder: number;
-  /** Precomputed lowercase haystack for client-side filtering (title + people + summary). */
-  searchText: string;
 }
 
 export function toMeetingCard(meeting: Meeting, now: Date): MeetingCardData {
@@ -46,13 +44,6 @@ export function toMeetingCard(meeting: Meeting, now: Date): MeetingCardData {
     openActions,
     group,
     groupOrder,
-    searchText: [
-      meeting.title,
-      meeting.participants.map((p) => p.name).join(" "),
-      meeting.summary.tldr,
-    ]
-      .join(" ")
-      .toLowerCase(),
   };
 }
 
