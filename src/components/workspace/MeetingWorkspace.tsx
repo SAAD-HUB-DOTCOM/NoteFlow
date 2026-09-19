@@ -1,14 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Meeting } from "@/types/meeting";
 import { PlaybackProvider, usePlayback } from "@/lib/playback";
 import { Player } from "@/components/workspace/Player";
 import { SummaryPanel } from "@/components/workspace/SummaryPanel";
 import { ActionItemsPanel } from "@/components/workspace/ActionItemsPanel";
 import { TranscriptPanel } from "@/components/workspace/TranscriptPanel";
+import { AskNoteFlow } from "@/components/workspace/AskNoteFlow";
 
-type TabId = "summary" | "actions" | "transcript";
+type TabId = "summary" | "actions" | "transcript" | "ask";
+
+const TAB_ORDER: TabId[] = ["summary", "actions", "transcript", "ask"];
 
 /** Wraps the interactive workspace in shared playback state. */
 export function MeetingWorkspace({ meeting }: { meeting: Meeting }) {
@@ -26,6 +29,7 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
     summary: null,
     actions: null,
     transcript: null,
+    ask: null,
   });
 
   const openActions = meeting.actionItems.filter((a) => !a.completed).length;
@@ -34,6 +38,7 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
     { id: "summary", label: "Summary" },
     { id: "actions", label: "Action Items", badge: openActions || undefined },
     { id: "transcript", label: "Transcript", badge: meeting.transcript.length || undefined },
+    { id: "ask", label: "Ask NoteFlow" },
   ];
 
   // Jump into the recording at a moment and reveal it in the transcript (shared seek primitive).
@@ -42,15 +47,24 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
     seekTo(seconds);
   }
 
+  // Deep link from cross-meeting search (?t=seconds): open on the transcript and seek there.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("t");
+    if (t === null) return;
+    const secs = Number(t);
+    if (!Number.isNaN(secs)) jumpToTranscript(secs);
+    // Run once on mount; jumpToTranscript is stable enough for this deep-link intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function onTabKeyDown(e: React.KeyboardEvent) {
-    const order: TabId[] = ["summary", "actions", "transcript"];
-    const idx = order.indexOf(tab);
+    const idx = TAB_ORDER.indexOf(tab);
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const next =
         e.key === "ArrowRight"
-          ? order[(idx + 1) % order.length]
-          : order[(idx - 1 + order.length) % order.length];
+          ? TAB_ORDER[(idx + 1) % TAB_ORDER.length]
+          : TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length];
       setTab(next);
       tabRefs.current[next]?.focus();
     }
@@ -61,7 +75,12 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
       <Player seed={meeting.id} />
 
       <div className="border-b border-border">
-        <div role="tablist" aria-label="Meeting sections" className="flex gap-6" onKeyDown={onTabKeyDown}>
+        <div
+          role="tablist"
+          aria-label="Meeting sections"
+          className="flex gap-6 overflow-x-auto"
+          onKeyDown={onTabKeyDown}
+        >
           {tabs.map((t) => {
             const selected = tab === t.id;
             return (
@@ -77,7 +96,7 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
                 aria-controls={`panel-${t.id}`}
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setTab(t.id)}
-                className={`-mb-px flex items-center gap-2 border-b-2 pb-3 pt-1 text-sm font-medium transition-colors ${
+                className={`-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 pb-3 pt-1 text-sm font-medium transition-colors ${
                   selected
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted hover:text-foreground"
@@ -114,6 +133,9 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
             segments={meeting.transcript}
             participants={meeting.participants}
           />
+        )}
+        {tab === "ask" && (
+          <AskNoteFlow askAnswers={meeting.askAnswers} onSeekTo={jumpToTranscript} />
         )}
       </div>
     </div>
