@@ -15,7 +15,7 @@ export function Player({ seed }: { seed: string }) {
   const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 sm:gap-4 sm:p-4">
       <button
         type="button"
         onClick={toggle}

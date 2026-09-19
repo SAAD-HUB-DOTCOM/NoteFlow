@@ -18,7 +18,7 @@ export function SummaryPanel({ summary }: { summary: MeetingSummary }) {
   return (
     <div className="max-w-reading">
       {templates.length > 1 && (
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted">
             <LayersIcon className="h-4 w-4" />
             Template

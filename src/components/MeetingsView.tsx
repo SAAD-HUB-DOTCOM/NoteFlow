@@ -64,7 +64,7 @@ export function MeetingsView({
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
           <Logo />
           <button
             type="button"
@@ -81,7 +81,7 @@ export function MeetingsView({
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-8 sm:py-10">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             My Meetings
