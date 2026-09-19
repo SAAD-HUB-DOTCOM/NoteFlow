@@ -4,3 +4,7 @@
 .agent-logs/*.tmp
 
 # NOTE: .agent-logs/ is intentionally committed (ships with the repo).
+
+# Python bytecode
+__pycache__/
+*.pyc
