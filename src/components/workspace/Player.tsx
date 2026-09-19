@@ -60,7 +60,7 @@ export function Player({ seed }: { seed: string }) {
             onChange={(e) => seekTo(Number(e.target.value))}
             aria-label="Seek recording"
             aria-valuetext={`${formatTimestamp(currentTime)} of ${formatTimestamp(duration)}`}
-            className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-primary [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+            className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-primary [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-track]:bg-transparent"
           />
         </div>
       </div>
