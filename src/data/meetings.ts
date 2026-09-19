@@ -65,12 +65,23 @@ const atxKickoff: Meeting = {
       "First priority is a visible, deployed product over backend/AI plumbing.",
     ],
   },
-  transcript: [], // TODO: paste from Fathom transcript export
-  actionItems: [
-    { id: "atx-a1", text: "Scaffold the Next.js app and get a live Vercel preview up early.", owner: "Saad Ullah", completed: false },
-    { id: "atx-a2", text: "Seed the app with real research-call data before building UI.", owner: "Saad Ullah", completed: false },
+  // Real transcript — verbatim from the author's Fathom recording (light ASR tidy only).
+  transcript: [
+    { id: "atx-1", speakerId: "saad", start: 30, end: 55, text: "Hi, listen — I'm starting my project. The time is 16:51, and it's Friday — sorry, it's Saturday — and we're going to do this project for the assignment right now." },
+    { id: "atx-2", speakerId: "saad", start: 55, end: 84, text: "I'm going to clone Fathom.ai for the ATX.careers assignment. I'm looking forward to being a part of ATX — it'll be a proud moment for me." },
   ],
-  askAnswers: [],
+  actionItems: [
+    { id: "atx-a1", text: "Clone Fathom (build NoteFlow) for the ATX.careers assignment.", owner: "Saad Ullah", completed: false, start: 55, segmentId: "atx-2" },
+  ],
+  askAnswers: [
+    {
+      id: "atx-q1",
+      question: "What is this project and why does it matter to Saad?",
+      answer:
+        "Saad is cloning Fathom.ai to build NoteFlow for his ATX.careers take-home assignment. He sees it as a step toward joining ATX and calls it a proud moment.",
+      citations: [{ segmentId: "atx-2", start: 55, label: "clone Fathom.ai for the ATX.careers assignment" }],
+    },
+  ],
 };
 
 const productPlanning: Meeting = {
@@ -89,13 +100,44 @@ const productPlanning: Meeting = {
       "Milestones: dashboard UI by Sat 8pm; transcript integration before Sun.",
     ],
   },
-  transcript: [], // TODO: paste from Fathom transcript export
-  actionItems: [
-    { id: "plan-a1", text: "Build seekTo() as a shared primitive and reuse it everywhere.", owner: "Saad Ullah", completed: false },
-    { id: "plan-a2", text: "Finish My Meetings dashboard UI by Saturday 8pm.", owner: "Saad Ullah", completed: false },
-    { id: "plan-a3", text: "Integrate transcript sync before Sunday.", owner: "Saad Ullah", completed: false },
+  // Real transcript — from the author's Fathom recording (as surfaced in Fathom's
+  // transcript view, which rendered these commitments in processed third person).
+  transcript: [
+    { id: "plan-1", speakerId: "saad", start: 3, end: 24, text: "Saad will finish the dashboard UI by Saturday at 8 PM, and integrate the transcript page before Sunday." },
+    { id: "plan-2", speakerId: "saad", start: 24, end: 38, text: "The biggest priority is getting the live deployment ready before submission." },
+    { id: "plan-3", speakerId: "saad", start: 38, end: 52, text: "We decided to use Next.js and deploy the application on Vercel." },
+    { id: "plan-4", speakerId: "saad", start: 52, end: 66, text: "The most important product feature is synchronizing the recording with the transcript." },
   ],
-  askAnswers: [],
+  actionItems: [
+    { id: "plan-a1", text: "Finish the My Meetings dashboard UI by Saturday 8 PM.", owner: "Saad Ullah", completed: false, start: 3, segmentId: "plan-1" },
+    { id: "plan-a2", text: "Integrate the transcript page before Sunday.", owner: "Saad Ullah", completed: false, start: 3, segmentId: "plan-1" },
+    { id: "plan-a3", text: "Get the live deployment ready before submission.", owner: "Saad Ullah", completed: false, start: 24, segmentId: "plan-2" },
+    { id: "plan-a4", text: "Make recording ↔ transcript sync the first core feature built.", owner: "Saad Ullah", completed: false, start: 52, segmentId: "plan-4" },
+  ],
+  askAnswers: [
+    {
+      id: "plan-q1",
+      question: "What stack did we decide on?",
+      answer: "Next.js, deployed on Vercel.",
+      citations: [{ segmentId: "plan-3", start: 38, label: "use Next.js and deploy the application on Vercel" }],
+    },
+    {
+      id: "plan-q2",
+      question: "What's the top priority before submission?",
+      answer:
+        "Getting the live deployment ready before submission, and the single most important product feature to nail is synchronizing the recording with the transcript.",
+      citations: [
+        { segmentId: "plan-2", start: 24, label: "getting the live deployment ready before submission" },
+        { segmentId: "plan-4", start: 52, label: "synchronizing the recording with the transcript" },
+      ],
+    },
+    {
+      id: "plan-q3",
+      question: "What are the deadlines?",
+      answer: "Dashboard UI by Saturday at 8 PM, and the transcript page integrated before Sunday.",
+      citations: [{ segmentId: "plan-1", start: 3, label: "finish the dashboard UI by Saturday at 8 PM… transcript page before Sunday" }],
+    },
+  ],
 };
 
 // ─── Detailed demo meeting (PLAN §7 "one detailed demo meeting") ─────────────
