@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Speaker, TranscriptSegment } from "@/types/meeting";
 import { usePlayback } from "@/lib/playback";
 import { findActiveSegmentIndex } from "@/lib/transcript";
@@ -18,12 +18,13 @@ import {
 /**
  * The transcript — the core synchronized surface (PLAN §4). The active segment
  * (start <= currentTime < end) highlights and auto-scrolls during playback; clicking a segment
- * seeks via the shared seekTo primitive.
+ * seeks via the shared seekTo primitive. Search steps through matches (reusing seekTo);
+ * highlights bookmark moments (teal accent) with a highlights-only filter.
  *
- * Search: matches are term-highlighted; the counter + up/down (or Enter) step through hits by
- * reusing seekTo. Highlights (PLAN §3, Level 1.5): bookmark a moment (teal accent — the design
- * system reserves accent for highlights), then filter to just those moments and jump to any of
- * them with the same seekTo.
+ * Performance (PLAN §8 large-meeting pass): playback ticks currentTime every frame, so this
+ * panel re-renders ~60×/s. Rows are React.memo'd with stable handlers, so a frame only
+ * reconciles the two rows whose active state flipped — not all ~200 rows of the 8-person
+ * meeting. That keeps scroll/search/highlights smooth without windowing.
  */
 export function TranscriptPanel({
   segments,
@@ -61,20 +62,22 @@ export function TranscriptPanel({
 
   const isEmpty = segments.length === 0;
 
-  function goToMatch(pos: number) {
-    if (matches.length === 0) return;
-    const wrapped = (pos + matches.length) % matches.length;
-    setMatchPos(wrapped);
-    seekTo(segments[matches[wrapped]].start);
-  }
-
-  function toggleHighlight(id: string) {
+  // Stable handlers so memoized rows don't re-render every frame.
+  const onSeek = useCallback((seconds: number) => seekTo(seconds), [seekTo]);
+  const onToggleHighlight = useCallback((id: string) => {
     setHighlights((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  }, []);
+
+  function goToMatch(pos: number) {
+    if (matches.length === 0) return;
+    const wrapped = (pos + matches.length) % matches.length;
+    setMatchPos(wrapped);
+    seekTo(segments[matches[wrapped]].start);
   }
 
   // Manual scroll gestures pause auto-scroll briefly so we don't fight the reader.
@@ -98,7 +101,7 @@ export function TranscriptPanel({
     if (performance.now() < pausedUntilRef.current) return;
     const container = scrollRef.current;
     const el = container.querySelector<HTMLElement>(`[data-seg="${activeIndex}"]`);
-    if (!el || el.offsetParent === null) return; // skip if hidden (e.g. highlights-only filter)
+    if (!el || el.offsetParent === null) return; // skip if hidden (highlights-only filter)
 
     const cTop = container.scrollTop;
     const cBottom = cTop + container.clientHeight;
@@ -128,6 +131,7 @@ export function TranscriptPanel({
   const hasQuery = query.trim().length > 0;
   const highlightCount = highlights.size;
   const showNoHighlights = highlightsOnly && highlightCount === 0;
+  const currentMatchIndex = hasQuery && matches.length ? matches[matchPos] : -1;
 
   return (
     <div className="rounded-xl border border-border bg-surface/40">
@@ -207,7 +211,7 @@ export function TranscriptPanel({
 
       <div
         ref={scrollRef}
-        className="max-h-[calc(100vh-23rem)] min-h-[20rem] overflow-y-auto p-2 sm:p-3"
+        className="max-h-[calc(100vh-23rem)] min-h-[18rem] overflow-y-auto p-2 sm:p-3"
       >
         {showNoHighlights ? (
           <div className="px-4 py-14 text-center">
@@ -221,82 +225,22 @@ export function TranscriptPanel({
             {segments.map((seg, i) => {
               const speaker = speakerById.get(seg.speakerId);
               const name = speaker?.name ?? "Speaker";
-              const initials = speaker?.initials ?? initialsFrom(name);
-              const isActive = i === activeIndex;
-              const isCurrentMatch = hasQuery && matches[matchPos] === i;
-              const isHighlighted = highlights.has(seg.id);
-              const hidden = highlightsOnly && !isHighlighted;
-
-              const rowBg = isActive
-                ? "bg-surface-hover"
-                : isHighlighted
-                  ? "bg-accent/5"
-                  : isCurrentMatch
-                    ? "bg-surface-hover/60"
-                    : "hover:bg-surface/80";
-
               return (
-                <li key={seg.id} data-seg={i} className={hidden ? "hidden" : undefined}>
-                  <div className={`group flex items-start gap-1 rounded-lg ${rowBg}`}>
-                    <button
-                      type="button"
-                      onClick={() => seekTo(seg.start)}
-                      aria-current={isActive ? "true" : undefined}
-                      className="flex min-w-0 flex-1 gap-3 rounded-lg px-3 py-2.5 text-left"
-                    >
-                      <span className="grid h-7 w-7 shrink-0 place-items-center self-start rounded-full bg-surface-hover text-[0.65rem] font-medium text-foreground/90 ring-1 ring-border/60">
-                        {initials}
-                      </span>
-
-                      <span className="min-w-0 flex-1 max-w-[68ch]">
-                        <span className="mb-0.5 flex items-center gap-2">
-                          <span
-                            className={`text-sm font-semibold ${
-                              isActive ? "text-primary" : "text-foreground/90"
-                            }`}
-                          >
-                            {name}
-                          </span>
-                          <span className="font-mono text-xs tabular-nums text-muted">
-                            {formatTimestamp(seg.start)}
-                          </span>
-                          {isActive && isPlaying && (
-                            <span className="flex items-end gap-0.5" aria-label="Now playing">
-                              <span className="eq-bar" style={{ animationDelay: "0ms" }} />
-                              <span className="eq-bar" style={{ animationDelay: "150ms" }} />
-                              <span className="eq-bar" style={{ animationDelay: "300ms" }} />
-                            </span>
-                          )}
-                        </span>
-                        <HighlightedText
-                          text={seg.text}
-                          query={hasQuery ? query : ""}
-                          className={`block text-sm leading-relaxed ${
-                            isActive ? "text-foreground" : "text-foreground/75"
-                          }`}
-                        />
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => toggleHighlight(seg.id)}
-                      aria-pressed={isHighlighted}
-                      aria-label={isHighlighted ? "Remove highlight" : "Highlight this moment"}
-                      className={`mr-1 mt-2 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors hover:bg-surface-hover ${
-                        isHighlighted
-                          ? "text-accent"
-                          : "text-muted/50 hover:text-foreground focus-visible:text-foreground"
-                      }`}
-                    >
-                      {isHighlighted ? (
-                        <BookmarkFilledIcon className="h-4 w-4" />
-                      ) : (
-                        <BookmarkIcon className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </li>
+                <TranscriptRow
+                  key={seg.id}
+                  index={i}
+                  seg={seg}
+                  name={name}
+                  initials={speaker?.initials ?? initialsFrom(name)}
+                  isActive={i === activeIndex}
+                  isPlaying={isPlaying}
+                  isHighlighted={highlights.has(seg.id)}
+                  isCurrentMatch={i === currentMatchIndex}
+                  hidden={highlightsOnly && !highlights.has(seg.id)}
+                  query={hasQuery ? query : ""}
+                  onSeek={onSeek}
+                  onToggleHighlight={onToggleHighlight}
+                />
               );
             })}
           </ol>
@@ -305,3 +249,105 @@ export function TranscriptPanel({
     </div>
   );
 }
+
+interface RowProps {
+  index: number;
+  seg: TranscriptSegment;
+  name: string;
+  initials: string;
+  isActive: boolean;
+  isPlaying: boolean;
+  isHighlighted: boolean;
+  isCurrentMatch: boolean;
+  hidden: boolean;
+  query: string;
+  onSeek: (seconds: number) => void;
+  onToggleHighlight: (id: string) => void;
+}
+
+const TranscriptRow = memo(function TranscriptRow({
+  index,
+  seg,
+  name,
+  initials,
+  isActive,
+  isPlaying,
+  isHighlighted,
+  isCurrentMatch,
+  hidden,
+  query,
+  onSeek,
+  onToggleHighlight,
+}: RowProps) {
+  const rowBg = isActive
+    ? "bg-surface-hover"
+    : isHighlighted
+      ? "bg-accent/5"
+      : isCurrentMatch
+        ? "bg-surface-hover/60"
+        : "hover:bg-surface/80";
+
+  return (
+    <li data-seg={index} className={hidden ? "hidden" : undefined}>
+      <div className={`group flex items-start gap-1 rounded-lg ${rowBg}`}>
+        <button
+          type="button"
+          onClick={() => onSeek(seg.start)}
+          aria-current={isActive ? "true" : undefined}
+          className="flex min-w-0 flex-1 gap-3 rounded-lg px-3 py-2.5 text-left"
+        >
+          <span className="grid h-7 w-7 shrink-0 place-items-center self-start rounded-full bg-surface-hover text-[0.65rem] font-medium text-foreground/90 ring-1 ring-border/60">
+            {initials}
+          </span>
+
+          <span className="min-w-0 flex-1 max-w-[68ch]">
+            <span className="mb-0.5 flex items-center gap-2">
+              <span
+                className={`text-sm font-semibold ${
+                  isActive ? "text-primary" : "text-foreground/90"
+                }`}
+              >
+                {name}
+              </span>
+              <span className="font-mono text-xs tabular-nums text-muted">
+                {formatTimestamp(seg.start)}
+              </span>
+              {isActive && isPlaying && (
+                <span className="flex items-end gap-0.5" aria-label="Now playing">
+                  <span className="eq-bar" style={{ animationDelay: "0ms" }} />
+                  <span className="eq-bar" style={{ animationDelay: "150ms" }} />
+                  <span className="eq-bar" style={{ animationDelay: "300ms" }} />
+                </span>
+              )}
+            </span>
+            <HighlightedText
+              text={seg.text}
+              query={query}
+              className={`block text-sm leading-relaxed ${
+                isActive ? "text-foreground" : "text-foreground/75"
+              }`}
+            />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onToggleHighlight(seg.id)}
+          aria-pressed={isHighlighted}
+          aria-label={isHighlighted ? "Remove highlight" : "Highlight this moment"}
+          className={`mr-1 mt-2 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors hover:bg-surface-hover ${
+            isHighlighted
+              ? "text-accent"
+              : "text-muted/50 hover:text-foreground focus-visible:text-foreground"
+          }`}
+        >
+          {isHighlighted ? (
+            <BookmarkFilledIcon className="h-4 w-4" />
+          ) : (
+            <BookmarkIcon className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+    </li>
+  );
+});
