@@ -19,13 +19,32 @@ def test_provider_detection():
     assert provider_from_url("not a url") is None
 
 
-def test_signature_roundtrip_valid():
+def test_signature_valid_with_webhook_headers():
+    """Current Recall workspaces (post 2025-12-15) send webhook-* headers."""
+    body = json.dumps({"event": "bot.status_change"}).encode()
+    headers = {
+        "webhook-id": "msg_1",
+        "webhook-timestamp": "1700000000",
+        "webhook-signature": sign_webhook(SECRET, "msg_1", "1700000000", body),
+    }
+    assert verify_webhook_signature(SECRET, headers, body) is True
+
+
+def test_signature_valid_with_legacy_svix_headers():
     body = json.dumps({"event": "bot.status_change"}).encode()
     headers = {
         "svix-id": "msg_1",
         "svix-timestamp": "1700000000",
         "svix-signature": sign_webhook(SECRET, "msg_1", "1700000000", body),
     }
+    assert verify_webhook_signature(SECRET, headers, body) is True
+
+
+def test_signature_accepts_multiple_v1_during_rotation():
+    body = b'{"event":"x"}'
+    valid = sign_webhook(SECRET, "m", "1", body)  # "v1,<sig>"
+    header = f"v1,c3RhbGVzaWc= {valid}"  # a stale v1 sig + the valid one, space-separated
+    headers = {"webhook-id": "m", "webhook-timestamp": "1", "webhook-signature": header}
     assert verify_webhook_signature(SECRET, headers, body) is True
 
 

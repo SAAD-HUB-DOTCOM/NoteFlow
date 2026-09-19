@@ -69,21 +69,34 @@ def provider_from_url(url: str) -> str | None:
 
 # ── Webhook signature verification (Svix-compatible HMAC-SHA256) ────────────────
 
-def verify_webhook_signature(secret: str, headers: Mapping[str, str], raw_body: bytes) -> bool:
-    """Verify a Recall (Svix-delivered) webhook signature.
+def webhook_event_id(headers: Mapping[str, str]) -> str | None:
+    """Normalized webhook/event id for idempotency.
 
-    Signed content is `{id}.{timestamp}.{body}`, HMAC-SHA256 with the base64-decoded secret
-    (the `whsec_` prefix is stripped), compared (constant-time) against the base64 signatures
-    in the signature header. Header names accept both `svix-*` and `webhook-*` spellings.
+    Current Recall workspaces (created after 2025-12-15) send `webhook-id`; older ones sent the
+    Svix `svix-id`. Prefer the current header, fall back to the legacy alias.
     """
     lower = {k.lower(): v for k, v in headers.items()}
-    msg_id = lower.get("svix-id") or lower.get("webhook-id")
-    timestamp = lower.get("svix-timestamp") or lower.get("webhook-timestamp")
-    sig_header = lower.get("svix-signature") or lower.get("webhook-signature")
+    return lower.get("webhook-id") or lower.get("svix-id")
+
+
+def verify_webhook_signature(secret: str, headers: Mapping[str, str], raw_body: bytes) -> bool:
+    """Verify a Recall webhook signature per Recall's current docs.
+
+    Recall (Standard Webhooks / Svix format): base64-decode the `whsec_` workspace secret body,
+    then HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{raw-body}` and compare (constant-time,
+    base64) against the signature header. Headers use `webhook-*` on workspaces created after
+    2025-12-15, with `svix-*` accepted as legacy aliases. The signature header may carry several
+    space-separated `v1,<sig>` entries during secret rotation — any matching one passes. HMAC is
+    over the exact RAW request body (never a re-serialized copy).
+    """
+    lower = {k.lower(): v for k, v in headers.items()}
+    msg_id = lower.get("webhook-id") or lower.get("svix-id")
+    timestamp = lower.get("webhook-timestamp") or lower.get("svix-timestamp")
+    sig_header = lower.get("webhook-signature") or lower.get("svix-signature")
     if not (msg_id and timestamp and sig_header):
         return False
 
-    signed_content = f"{msg_id}.{timestamp}.{raw_body.decode('utf-8')}".encode("utf-8")
+    signed_content = f"{msg_id}.{timestamp}.".encode("utf-8") + raw_body
 
     key = secret[len("whsec_"):] if secret.startswith("whsec_") else secret
     try:
@@ -95,17 +108,17 @@ def verify_webhook_signature(secret: str, headers: Mapping[str, str], raw_body: 
         hmac.new(secret_bytes, signed_content, hashlib.sha256).digest()
     ).decode("utf-8")
 
-    # Signature header is a space-separated list of `v1,<base64sig>` entries.
+    # Space-separated list of `<version>,<base64sig>`; accept any matching v1 signature.
     for part in sig_header.split(" "):
-        _, _, sig = part.partition(",")
-        if sig and hmac.compare_digest(sig, expected):
+        version, _, sig = part.partition(",")
+        if version == "v1" and sig and hmac.compare_digest(sig, expected):
             return True
     return False
 
 
 def sign_webhook(secret: str, msg_id: str, timestamp: str, raw_body: bytes) -> str:
-    """Produce a Svix-style `svix-signature` value. Used by tests (and useful for local replay)."""
-    signed_content = f"{msg_id}.{timestamp}.{raw_body.decode('utf-8')}".encode("utf-8")
+    """Produce a `v1,<sig>` signature over `{id}.{timestamp}.{raw-body}`. Tests + local replay."""
+    signed_content = f"{msg_id}.{timestamp}.".encode("utf-8") + raw_body
     key = secret[len("whsec_"):] if secret.startswith("whsec_") else secret
     try:
         secret_bytes = base64.b64decode(key)

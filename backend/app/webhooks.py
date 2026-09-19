@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import Meeting, WebhookEvent
-from app.services.recall import map_bot_status, verify_webhook_signature
+from app.services.recall import map_bot_status, verify_webhook_signature, webhook_event_id
 
 router = APIRouter()
 
@@ -72,7 +72,7 @@ async def recall_webhook(request: Request) -> Response:
     if not verify_webhook_signature(secret, request.headers, raw):
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
 
-    event_id = request.headers.get("svix-id") or request.headers.get("webhook-id")
+    event_id = webhook_event_id(request.headers)
     try:
         body = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError:

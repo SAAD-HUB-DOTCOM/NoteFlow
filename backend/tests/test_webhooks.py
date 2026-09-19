@@ -21,9 +21,10 @@ def _signed(body: dict, msg_id="msg_1"):
     raw = json.dumps(body).encode()
     ts = "1700000000"
     headers = {
-        "svix-id": msg_id,
-        "svix-timestamp": ts,
-        "svix-signature": sign_webhook(TEST_WEBHOOK_SECRET, msg_id, ts, raw),
+        # Current Recall header standard (webhook-*); the verifier also accepts legacy svix-*.
+        "webhook-id": msg_id,
+        "webhook-timestamp": ts,
+        "webhook-signature": sign_webhook(TEST_WEBHOOK_SECRET, msg_id, ts, raw),
         "content-type": "application/json",
     }
     return raw, headers
@@ -59,9 +60,9 @@ def test_webhook_rejects_invalid_signature(client, SessionFactory):
     _seed_meeting(SessionFactory)
     raw = json.dumps({"event": "x"}).encode()
     headers = {
-        "svix-id": "msg_2",
-        "svix-timestamp": "1700000000",
-        "svix-signature": "v1,not-a-real-signature",
+        "webhook-id": "msg_2",
+        "webhook-timestamp": "1700000000",
+        "webhook-signature": "v1,not-a-real-signature",
         "content-type": "application/json",
     }
     r = client.post("/webhooks/recall", content=raw, headers=headers)
