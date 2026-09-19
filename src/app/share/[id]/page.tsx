@@ -16,6 +16,9 @@ export function generateStaticParams() {
   return meetings.map((m) => ({ id: m.id }));
 }
 
+// Fixed/seeded set — unknown ids are a genuine 404, not a soft-404.
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {
@@ -40,7 +43,7 @@ export default async function SharePage({
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
           <Logo />
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted">
             <ShareIcon className="h-3.5 w-3.5" />
@@ -49,7 +52,7 @@ export default async function SharePage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <p className="mb-5 text-sm text-muted">
           Someone shared this meeting with you. You can read the summary, play the recording in
           sync with the transcript, and review the action items.
