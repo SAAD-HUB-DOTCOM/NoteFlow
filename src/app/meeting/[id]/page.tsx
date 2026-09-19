@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMeeting } from "@/data/meetings";
+import { getMeeting, meetings } from "@/data/meetings";
 import { Logo } from "@/components/Logo";
 import { ChevronRightIcon } from "@/components/icons";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { MeetingWorkspace } from "@/components/workspace/MeetingWorkspace";
 
-/**
- * Phase-1 placeholder for the meeting workspace.
- *
- * The real workspace — player, synchronized transcript, summary, action items, Ask NoteFlow —
- * is Phase 2 (PLAN §8, hours 4–10). This stub exists only so the dashboard's card links resolve
- * to a real, branded page instead of a 404 in the meantime. It is intentionally not the
- * workspace shell.
- */
+/** Pre-render every seeded meeting's workspace at build time. */
+export function generateStaticParams() {
+  return meetings.map((m) => ({ id: m.id }));
+}
+
 export default async function MeetingPage({
   params,
 }: {
@@ -38,25 +37,12 @@ export default async function MeetingPage({
           <span className="text-foreground/80">{meeting.title}</span>
         </nav>
 
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground">
-          {meeting.title}
-        </h1>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted">
-          {meeting.summary.tldr}
-        </p>
+        <div className="mt-5">
+          <WorkspaceHeader meeting={meeting} />
+        </div>
 
-        <div className="mt-8 rounded-xl border border-dashed border-border bg-surface/40 px-6 py-12 text-center">
-          <p className="text-base font-medium text-foreground">Workspace coming in Phase 2</p>
-          <p className="mx-auto mt-1.5 max-w-md text-sm text-muted">
-            The player, synchronized transcript, summary, action items, and Ask NoteFlow live
-            here next. For now, head back to browse the seeded meetings.
-          </p>
-          <Link
-            href="/"
-            className="mt-4 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-          >
-            Back to My Meetings
-          </Link>
+        <div className="mt-8">
+          <MeetingWorkspace meeting={meeting} />
         </div>
       </main>
     </div>
