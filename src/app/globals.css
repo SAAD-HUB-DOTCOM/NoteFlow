@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Selection uses the indigo accent at low opacity — calm, not loud. */
+  ::selection {
+    background-color: rgba(108, 92, 231, 0.3);
+    color: #f5f5f7;
+  }
+
+  /* Dark, unobtrusive scrollbars that match the surface palette. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2d2d45 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: #2d2d45;
+    border-radius: 9999px;
+    border: 2px solid #0f0f1a;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #3a3a58;
+  }
+
+  /* Visible keyboard focus everywhere, using the primary ring. */
+  :focus-visible {
+    outline: 2px solid #6c5ce7;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

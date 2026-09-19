@@ -8,3 +8,18 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Node / Next.js
+/node_modules
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# Env
+.env*.local
+.env
+
+# Vercel
+.vercel
