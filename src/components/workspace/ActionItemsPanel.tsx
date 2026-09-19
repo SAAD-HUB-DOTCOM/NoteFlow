@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ActionItem } from "@/types/meeting";
 import { formatTimestamp } from "@/lib/format";
-import { ClockIcon } from "@/components/icons";
+import { ClockIcon, CheckIcon } from "@/components/icons";
 
 /**
  * The Action Items panel — deliberately the strict surface (PLAN §1): only follow-ups people
@@ -13,9 +13,12 @@ import { ClockIcon } from "@/components/icons";
 export function ActionItemsPanel({
   items,
   onSeekTo,
+  readOnly = false,
 }: {
   items: ActionItem[];
   onSeekTo: (seconds: number) => void;
+  /** Share page: show completion status but don't let a public viewer toggle it. */
+  readOnly?: boolean;
 }) {
   const [done, setDone] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(items.map((i) => [i.id, i.completed])),
@@ -33,7 +36,7 @@ export function ActionItemsPanel({
     );
   }
 
-  const openCount = items.filter((i) => !done[i.id]).length;
+  const openCount = items.filter((i) => (readOnly ? !i.completed : !done[i.id])).length;
 
   return (
     <div className="max-w-reading">
@@ -44,20 +47,31 @@ export function ActionItemsPanel({
       </p>
       <ul className="space-y-2">
         {items.map((item) => {
-          const isDone = done[item.id];
+          const isDone = readOnly ? item.completed : done[item.id];
           return (
             <li
               key={item.id}
               className="flex items-start gap-3 rounded-lg border border-border bg-surface p-3.5"
             >
-              <input
-                type="checkbox"
-                checked={isDone}
-                onChange={() => setDone((d) => ({ ...d, [item.id]: !d[item.id] }))}
-                aria-label={`Mark "${item.text}" ${isDone ? "not done" : "done"}`}
-                style={{ accentColor: "#00D9C0" }}
-                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded"
-              />
+              {readOnly ? (
+                <span
+                  className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border ${
+                    isDone ? "border-accent bg-accent text-background" : "border-border"
+                  }`}
+                  aria-label={isDone ? "Completed" : "Not completed"}
+                >
+                  {isDone && <CheckIcon className="h-3 w-3" strokeWidth={3} />}
+                </span>
+              ) : (
+                <input
+                  type="checkbox"
+                  checked={isDone}
+                  onChange={() => setDone((d) => ({ ...d, [item.id]: !d[item.id] }))}
+                  aria-label={`Mark "${item.text}" ${isDone ? "not done" : "done"}`}
+                  style={{ accentColor: "#00D9C0" }}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <p
                   className={`text-sm leading-relaxed ${

@@ -11,18 +11,25 @@ import { AskNoteFlow } from "@/components/workspace/AskNoteFlow";
 
 type TabId = "summary" | "actions" | "transcript" | "ask";
 
-const TAB_ORDER: TabId[] = ["summary", "actions", "transcript", "ask"];
-
-/** Wraps the interactive workspace in shared playback state. */
-export function MeetingWorkspace({ meeting }: { meeting: Meeting }) {
+/**
+ * Wraps the interactive workspace in shared playback state. `readOnly` powers the public share
+ * page: no Ask tab, and action items show status without being editable.
+ */
+export function MeetingWorkspace({
+  meeting,
+  readOnly = false,
+}: {
+  meeting: Meeting;
+  readOnly?: boolean;
+}) {
   return (
     <PlaybackProvider duration={meeting.durationSec} recordingUrl={meeting.recordingUrl}>
-      <WorkspaceInner meeting={meeting} />
+      <WorkspaceInner meeting={meeting} readOnly={readOnly} />
     </PlaybackProvider>
   );
 }
 
-function WorkspaceInner({ meeting }: { meeting: Meeting }) {
+function WorkspaceInner({ meeting, readOnly }: { meeting: Meeting; readOnly: boolean }) {
   const { seekTo } = usePlayback();
   const [tab, setTab] = useState<TabId>("summary");
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
@@ -38,8 +45,9 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
     { id: "summary", label: "Summary" },
     { id: "actions", label: "Action Items", badge: openActions || undefined },
     { id: "transcript", label: "Transcript" },
-    { id: "ask", label: "Ask NoteFlow" },
+    ...(readOnly ? [] : [{ id: "ask" as const, label: "Ask NoteFlow" }]),
   ];
+  const tabOrder: TabId[] = tabs.map((t) => t.id);
 
   // Jump into the recording at a moment and reveal it in the transcript (shared seek primitive).
   function jumpToTranscript(seconds: number) {
@@ -58,13 +66,13 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
   }, []);
 
   function onTabKeyDown(e: React.KeyboardEvent) {
-    const idx = TAB_ORDER.indexOf(tab);
+    const idx = tabOrder.indexOf(tab);
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const next =
         e.key === "ArrowRight"
-          ? TAB_ORDER[(idx + 1) % TAB_ORDER.length]
-          : TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length];
+          ? tabOrder[(idx + 1) % tabOrder.length]
+          : tabOrder[(idx - 1 + tabOrder.length) % tabOrder.length];
       setTab(next);
       tabRefs.current[next]?.focus();
     }
@@ -126,7 +134,11 @@ function WorkspaceInner({ meeting }: { meeting: Meeting }) {
       >
         {tab === "summary" && <SummaryPanel summary={meeting.summary} />}
         {tab === "actions" && (
-          <ActionItemsPanel items={meeting.actionItems} onSeekTo={jumpToTranscript} />
+          <ActionItemsPanel
+            items={meeting.actionItems}
+            onSeekTo={jumpToTranscript}
+            readOnly={readOnly}
+          />
         )}
         {tab === "transcript" && (
           <TranscriptPanel

@@ -157,3 +157,39 @@ export function MicIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function BookmarkIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4V4.5Z" />
+    </Icon>
+  );
+}
+
+export function BookmarkFilledIcon(props: IconProps) {
+  return (
+    <Icon fill="currentColor" stroke="currentColor" {...props}>
+      <path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4V4.5Z" />
+    </Icon>
+  );
+}
+
+export function ShareIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="6" r="2.5" />
+      <circle cx="18" cy="18" r="2.5" />
+      <path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6" />
+    </Icon>
+  );
+}
+
+export function LayersIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z" />
+      <path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5" />
+    </Icon>
+  );
+}
