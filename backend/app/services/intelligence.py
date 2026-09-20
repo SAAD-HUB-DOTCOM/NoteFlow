@@ -111,6 +111,75 @@ def _validate(raw: dict, ref_map: dict[str, str]) -> dict:
     }
 
 
+_ASK_SYSTEM = (
+    "You answer a question about ONE meeting using ONLY its transcript. Each line is prefixed with "
+    'a ref like [S3 00:14-00:21]. Return ONLY JSON: {"answer": str, "citations": [str]}. Cite the '
+    'refs that support your answer as their S# token only (e.g. "S3"); use ONLY refs that appear in '
+    "the transcript, never invent them. If the transcript does not contain the answer, set answer "
+    "to exactly \"I couldn't find that in this meeting.\" and citations to []. Do not use any "
+    "outside knowledge. Be concise and specific."
+)
+
+_NOT_FOUND = "I couldn't find that in this meeting."
+
+
+def _call_ask_groq(transcript_text: str, question: str) -> dict:
+    settings = get_settings()
+    if not settings.groq_api_key:
+        raise GroqNotConfigured("GROQ_API_KEY is not configured.")
+    resp = httpx.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {settings.groq_api_key}", "Content-Type": "application/json"},
+        json={
+            "model": settings.groq_model,
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": _ASK_SYSTEM},
+                {"role": "user", "content": f"Transcript:\n{transcript_text}\n\nQuestion: {question}"},
+            ],
+        },
+        timeout=90,
+    )
+    resp.raise_for_status()
+    return json.loads(resp.json()["choices"][0]["message"]["content"])
+
+
+def answer_question(meeting_id: str, question: str) -> dict | None:
+    """Answer a question grounded in a meeting's real transcript.
+
+    Returns {"answer": str, "citations": [real_segment_id, ...]} — citations validated against the
+    meeting's actual segments (invented refs dropped). Returns None if the meeting has no transcript
+    to answer from. Never fabricates: unsupported questions get an honest "couldn't find it".
+    """
+    db = SessionLocal()
+    try:
+        segments = (
+            db.query(TranscriptSegment)
+            .filter(TranscriptSegment.meeting_id == meeting_id)
+            .order_by(TranscriptSegment.sequence)
+            .all()
+        )
+        if not segments:
+            return None
+        lines: list[str] = []
+        ref_map: dict[str, str] = {}
+        for i, seg in enumerate(segments, start=1):
+            ref = f"S{i}"
+            ref_map[ref] = seg.id
+            speaker = seg.speaker_label or "Speaker"
+            lines.append(f"[{ref} {_mmss(seg.start_ms)}-{_mmss(seg.end_ms)}] {speaker}: {seg.text}")
+        raw = _call_ask_groq("\n".join(lines), question)
+        answer = str(raw.get("answer") or "").strip() or _NOT_FOUND
+        citations = _valid_refs(raw.get("citations"), ref_map)
+        # If the model admits it couldn't find the answer, citations are meaningless — drop them.
+        if answer == _NOT_FOUND:
+            citations = []
+        return {"answer": answer, "citations": citations}
+    finally:
+        db.close()
+
+
 def generate_intelligence(meeting_id: str, *, force: bool = False) -> bool:
     """Generate + persist intelligence for a meeting. Idempotent. Returns True if a row now exists."""
     settings = get_settings()

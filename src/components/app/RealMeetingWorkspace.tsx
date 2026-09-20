@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { StatusChip } from "@/components/app/StatusChip";
 import { ConnectionBadge } from "@/components/app/ConnectionBadge";
 import { MeetingInsights } from "@/components/app/MeetingInsights";
+import { MeetingAsk } from "@/components/app/MeetingAsk";
 import { RecordingPlayer, type RecordingPlayerHandle } from "@/components/app/RecordingPlayer";
 import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { CalendarIcon, ChevronRightIcon, ClockIcon, MicIcon, UsersIcon } from "@/components/icons";
@@ -162,6 +163,11 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
         ) : (
           <div className="max-w-reading">
             <RecordingPlayer ref={playerRef} meetingId={meeting.id} onTime={setCurrentTime} />
+            <MeetingAsk
+              meetingId={meeting.id}
+              segments={segments}
+              onSeek={(seconds) => playerRef.current?.seekTo(seconds)}
+            />
             <MeetingInsights meetingId={meeting.id} />
             <h2 className="mb-3 text-sm font-semibold text-foreground">Transcript</h2>
             <Transcript

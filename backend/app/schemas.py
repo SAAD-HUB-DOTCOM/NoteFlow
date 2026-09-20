@@ -73,6 +73,15 @@ class MeetingTranscriptOut(BaseModel):
     segments: list[TranscriptSegmentOut]
 
 
+class AskIn(BaseModel):
+    question: str
+
+
+class AskOut(BaseModel):
+    answer: str
+    citations: list[str]  # real transcript_segment ids, validated
+
+
 class RecordingOut(BaseModel):
     meeting_id: str
     status: str  # ready | processing | unavailable

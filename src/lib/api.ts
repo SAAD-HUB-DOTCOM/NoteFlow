@@ -72,6 +72,11 @@ export interface TranscriptDTO {
   segments: TranscriptSegmentDTO[];
 }
 
+export interface AskDTO {
+  answer: string;
+  citations: string[]; // real transcript_segment ids
+}
+
 export interface RecordingDTO {
   meeting_id: string;
   status: "ready" | "processing" | "unavailable";

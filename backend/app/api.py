@@ -13,6 +13,8 @@ from app.models import (
     UserPreferences,
 )
 from app.schemas import (
+    AskIn,
+    AskOut,
     CaptureIn,
     HealthOut,
     MeetingIntelligenceOut,
@@ -32,6 +34,7 @@ from app.services.recall import (
     get_recall_service,
     provider_from_url,
 )
+from app.services.intelligence import GroqNotConfigured, answer_question
 from app.services.transcription import enqueue_job, run_create_transcript
 
 router = APIRouter()
@@ -335,6 +338,43 @@ def get_meeting_recording(
         url=playback["url"],
         duration_seconds=meeting.duration_seconds,
     )
+
+
+@router.post("/meetings/{meeting_id}/ask", response_model=AskOut, tags=["meetings"])
+def ask_meeting(
+    meeting_id: str,
+    payload: AskIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AskOut:
+    """Ask a question about ONE meeting, grounded in its real transcript (owner-scoped).
+
+    Groq answers only from the supplied transcript; citations are validated to real segment ids
+    (invented ones dropped). The Groq credential never reaches the browser.
+    """
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    question = (payload.question or "").strip()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Ask a question first."
+        )
+    try:
+        result = answer_question(meeting_id, question)
+    except GroqNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Ask NoteFlow isn't configured yet (GROQ_API_KEY missing).",
+        )
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't reach the answer service. Try again in a moment.",
+        )
+    if result is None:
+        return AskOut(answer="This meeting has no transcript to answer from yet.", citations=[])
+    return AskOut(**result)
 
 
 @router.get(
