@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -126,6 +127,21 @@ class TranscriptSegment(TimestampMixin, Base):
     source: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. assembly_ai_async
 
     meeting: Mapped["Meeting"] = relationship(back_populates="transcript_segments")
+
+
+class MeetingIntelligence(TimestampMixin, Base):
+    """Groq-generated meeting intelligence (Phase 5). One row per meeting (PK = meeting_id) →
+    generation is idempotent (upsert). `content` holds the validated structured JSON (summary,
+    key_points, decisions, action_items, important_moments) with real transcript segment ids."""
+    __tablename__ = "meeting_intelligence"
+    meeting_id: Mapped[str] = mapped_column(
+        ForeignKey("meetings.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String)
+    content: Mapped[dict] = mapped_column(JSON)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class WebhookEvent(TimestampMixin, Base):

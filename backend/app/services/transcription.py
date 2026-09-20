@@ -312,6 +312,13 @@ def run_process_transcript(meeting_id: str) -> None:
             db.commit()  # atomic: segments + status + job together
             log.info("process_transcript meeting_id=%s persisted %d segments -> ready",
                      meeting_id, len(segments))
+            # Phase 5: generate meeting intelligence from the real transcript (best-effort;
+            # transcript stays 'ready' even if Groq is down).
+            try:
+                from app.services.intelligence import generate_intelligence
+                generate_intelligence(meeting_id)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("intelligence generation errored meeting_id=%s: %s", meeting_id, exc)
         except IntegrityError:
             db.rollback()  # concurrent run already inserted segments — treat as done
             log.info("process_transcript meeting_id=%s: segments already present (concurrent)", meeting_id)

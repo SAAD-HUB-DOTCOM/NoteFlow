@@ -71,3 +71,17 @@ export interface TranscriptDTO {
   status: string;
   segments: TranscriptSegmentDTO[];
 }
+
+export interface IntelligenceContent {
+  summary: string;
+  key_points: string[];
+  decisions: { text: string; segment_ids: string[] }[];
+  action_items: { text: string; owner: string | null; segment_ids: string[] }[];
+  important_moments: { title: string; segment_ids: string[] }[];
+}
+
+export interface IntelligenceDTO {
+  meeting_id: string;
+  state: "ready" | "generating" | "unavailable";
+  content: IntelligenceContent | null;
+}

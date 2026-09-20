@@ -72,3 +72,11 @@ class MeetingTranscriptOut(BaseModel):
     status: str
     segments: list[TranscriptSegmentOut]
 
+
+class MeetingIntelligenceOut(BaseModel):
+    meeting_id: str
+    # "ready" (content present) | "generating" (transcript ready, insights pending) |
+    # "unavailable" (no transcript to summarize)
+    state: str
+    content: dict | None = None
+

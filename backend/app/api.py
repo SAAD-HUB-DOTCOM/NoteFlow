@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import Meeting, Profile, TranscriptSegment, UserPreferences
+from app.models import (
+    Meeting,
+    MeetingIntelligence,
+    Profile,
+    TranscriptSegment,
+    UserPreferences,
+)
 from app.schemas import (
     CaptureIn,
     HealthOut,
+    MeetingIntelligenceOut,
     MeetingOut,
     MeetingTranscriptOut,
     MeOut,
@@ -276,3 +283,31 @@ def get_meeting_transcript(
         for r in rows
     ]
     return MeetingTranscriptOut(meeting_id=meeting.id, status=meeting.status, segments=segments)
+
+
+@router.get(
+    "/meetings/{meeting_id}/intelligence",
+    response_model=MeetingIntelligenceOut,
+    tags=["meetings"],
+)
+def get_meeting_intelligence(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeetingIntelligenceOut:
+    """Real Groq-generated intelligence (owner-scoped). `generating` while the transcript exists
+    but insights aren't ready yet; `unavailable` if there's no transcript to summarize."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    row = db.get(MeetingIntelligence, meeting_id)
+    if row is not None:
+        return MeetingIntelligenceOut(meeting_id=meeting_id, state="ready", content=row.content)
+    has_transcript = (
+        db.query(TranscriptSegment).filter(TranscriptSegment.meeting_id == meeting_id).count() > 0
+    )
+    return MeetingIntelligenceOut(
+        meeting_id=meeting_id,
+        state="generating" if has_transcript else "unavailable",
+        content=None,
+    )

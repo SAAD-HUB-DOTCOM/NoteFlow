@@ -8,6 +8,7 @@ import { formatDuration, formatFullDate, formatTimestamp, initialsFrom } from "@
 import { Skeleton } from "@/components/Skeleton";
 import { StatusChip } from "@/components/app/StatusChip";
 import { ConnectionBadge } from "@/components/app/ConnectionBadge";
+import { MeetingInsights } from "@/components/app/MeetingInsights";
 import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { CalendarIcon, ChevronRightIcon, ClockIcon, MicIcon, UsersIcon } from "@/components/icons";
 
@@ -156,15 +157,13 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
             body="This meeting is ready but no transcript segments were produced."
           />
         ) : (
-          <Transcript segments={segments} />
+          <div className="max-w-reading">
+            <MeetingInsights meetingId={meeting.id} />
+            <h2 className="mb-3 text-sm font-semibold text-foreground">Transcript</h2>
+            <Transcript segments={segments} />
+          </div>
         )}
       </div>
-
-      {kind === "ready" && segments.length > 0 && (
-        <p className="mt-6 max-w-reading text-xs leading-relaxed text-muted">
-          Summary, action items, and Ask NoteFlow for real meetings arrive in a later step.
-        </p>
-      )}
     </main>
   );
 }
