@@ -44,16 +44,15 @@ class RecallService:
     def create_transcript(self, recording_id: str) -> dict:
         """Start an async AssemblyAI transcript for a recording (Phase 4).
 
-        The AssemblyAI credential lives in the Recall workspace (Tokyo); we only select the
-        provider + diarization here. Endpoint:
-        POST /recording/{recording_id}/create_transcript/
+        Uses Recall's "Perfect Diarization" (separate participant streams when available) instead
+        of AssemblyAI machine diarization (`speaker_labels`), so transcript parts map to REAL
+        meeting participant names rather than generic A/B/C labels — the Fathom-style behavior we
+        want. The AssemblyAI credential lives in the Recall workspace (Tokyo).
+        Endpoint: POST /recording/{recording_id}/create_transcript/
         """
         body = {
-            "provider": {
-                "assembly_ai_async": {
-                    "speaker_labels": True,  # diarization / speaker identity
-                }
-            }
+            "provider": {"assembly_ai_async": {}},
+            "diarization": {"use_separate_streams_when_available": True},
         }
         with httpx.Client(timeout=30) as client:
             resp = client.post(

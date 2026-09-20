@@ -63,10 +63,10 @@ def _parse_dt(value) -> datetime | None:
 
 
 def _apply_recording_times(meeting: Meeting, body: dict) -> None:
-    """Best-effort populate started_at/ended_at/duration from the recording.done payload.
-
-    Only sets fields that are present + parseable and not already set — smallest safe fix, no new
-    webhooks or scope. Field names are defensive pending confirmation against the real payload.
+    """OPPORTUNISTIC only — Recall's documented recording.done payload guarantees the recording
+    id/status/bot id, NOT started_at/ended_at/duration. So this never assumes those fields exist:
+    it populates them purely if a future/variant payload happens to include parseable values, and
+    otherwise leaves them null (a later phase can source them reliably). No new scope/webhooks.
     """
     data = body.get("data") or {}
     rec = data.get("recording") if isinstance(data.get("recording"), dict) else {}
