@@ -35,11 +35,26 @@ def _extract_bot_id(body: dict) -> str | None:
 
 
 def _extract_status_code(body: dict) -> str | None:
+    """Bot status code. Real Recall events carry it in the EVENT NAME (bot.in_call_recording)
+    and in data.data.code; legacy shapes used data.status.code. Return the first candidate that
+    maps to a known status, else the first present candidate."""
+    candidates: list[str] = []
+    event = (body.get("event") or "").lower()
+    if event.startswith("bot."):
+        candidates.append(event[len("bot."):])
     data = body.get("data") or {}
+    inner = data.get("data") if isinstance(data.get("data"), dict) else {}
+    if isinstance(inner, dict) and inner.get("code"):
+        candidates.append(inner["code"])
     st = data.get("status")
-    if isinstance(st, dict):
-        return st.get("code")
-    return st if isinstance(st, str) else None
+    if isinstance(st, dict) and st.get("code"):
+        candidates.append(st["code"])
+    elif isinstance(st, str):
+        candidates.append(st)
+    for c in candidates:
+        if map_bot_status(c):
+            return c
+    return candidates[0] if candidates else None
 
 
 def _extract_recording_id(body: dict) -> str | None:
@@ -127,17 +142,15 @@ def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None)
         _apply_recording_times(meeting, body)
         meeting.status = "transcribing"
         db.commit()
-        # Kick off the async transcript creation once, idempotently.
-        if meeting.recall_recording_id:
-            created = enqueue_job(db, meeting.id, "create_transcript")
-            log.info(
-                "recording.done meeting_id=%s recording_id=%s create_transcript enqueued=%s",
-                meeting.id, meeting.recall_recording_id, created,
-            )
-            if created and background_tasks is not None:
-                background_tasks.add_task(run_create_transcript, meeting.id)
-        else:
-            log.error("recording.done meeting_id=%s: no recording id -> create_transcript NOT started", meeting.id)
+        # Kick off the async transcript creation once, idempotently. The job reconciles the
+        # recording id from the bot object if the payload didn't carry it.
+        created = enqueue_job(db, meeting.id, "create_transcript")
+        log.info(
+            "recording.done meeting_id=%s recording_id=%s create_transcript enqueued=%s",
+            meeting.id, meeting.recall_recording_id, created,
+        )
+        if created and background_tasks is not None:
+            background_tasks.add_task(run_create_transcript, meeting.id)
         return
 
     if event_type in ("transcript.processing", "transcript_processing"):

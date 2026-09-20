@@ -1,6 +1,6 @@
 """API v1 routes — Phase 1 (health, me, preferences). Capture/webhooks land in Phase 3."""
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
@@ -23,6 +23,7 @@ from app.services.recall import (
     get_recall_service,
     provider_from_url,
 )
+from app.services.transcription import enqueue_job, run_create_transcript
 
 router = APIRouter()
 
@@ -148,9 +149,11 @@ def capture_meeting(
             detail="Meeting capture isn't configured yet (RECALL_API_KEY missing).",
         )
 
+    provider_names = {"google_meet": "Google Meet", "zoom": "Zoom", "teams": "Microsoft Teams"}
+    default_title = f"{provider_names.get(provider, 'Meeting')} meeting"
     meeting = Meeting(
         owner_user_id=user.id,
-        title=payload.title,
+        title=payload.title or default_title,
         source="manual",
         provider=provider,
         meeting_url=payload.meeting_url,
@@ -210,6 +213,34 @@ def get_meeting(
     meeting = db.get(Meeting, meeting_id)
     if meeting is None or meeting.owner_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    return meeting
+
+
+@router.post("/meetings/{meeting_id}/reprocess", response_model=MeetingOut, tags=["meetings"])
+def reprocess_meeting(
+    meeting_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Meeting:
+    """Manually re-run the transcription pipeline for a stuck meeting (owner-scoped).
+
+    Reconciles the recording id from Recall if missing, re-creates the async transcript, and
+    re-processes it. Safe to call repeatedly — jobs are forced back to pending, and segment
+    persistence is idempotent.
+    """
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    if not meeting.recall_bot_id:
+        raise HTTPException(status_code=422, detail="This meeting has no bot to reprocess.")
+    meeting.status = "transcribing"
+    meeting.processing_error_code = None
+    meeting.processing_error_message = None
+    db.commit()
+    enqueue_job(db, meeting.id, "create_transcript", force=True)
+    background_tasks.add_task(run_create_transcript, meeting.id)
+    db.refresh(meeting)
     return meeting
 
 

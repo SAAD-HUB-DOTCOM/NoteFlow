@@ -58,8 +58,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     if (!isSupabaseConfigured) return;
     const supabase = getSupabaseBrowser();
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
 
     async function connect() {
+      if (cancelled) return;
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       if (cancelled) return;
@@ -69,6 +72,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
       // Private channels are authorized via the JWT (RLS on realtime.messages).
       await supabase.realtime.setAuth(session.access_token);
+
+      // Tear down any prior channel before re-creating (no duplicate subscriptions).
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
 
       const channel = supabase.channel(`user:${session.user.id}:meetings`, {
         config: { private: true },
@@ -82,12 +91,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       channel.subscribe((s) => {
         if (cancelled) return;
         if (s === "SUBSCRIBED") {
+          attempt = 0;
           setStatus("connected");
           setConnectionEpoch((e) => e + 1);
-        } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") {
-          setStatus("reconnecting");
-        } else if (s === "CLOSED") {
-          setStatus("disconnected");
+        } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
+          // Join rejected (e.g. RLS policy missing) or dropped — retry with capped backoff.
+          setStatus(s === "CLOSED" ? "disconnected" : "reconnecting");
+          attempt += 1;
+          const delay = Math.min(30_000, 2_000 * 2 ** Math.min(attempt, 4));
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => void connect(), delay);
         }
       });
     }
@@ -109,6 +122,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
       authSub.subscription.unsubscribe();
       if (channelRef.current) {
         void supabase.removeChannel(channelRef.current);

@@ -20,7 +20,7 @@ type State =
  */
 export function MeetingsList() {
   const [state, setState] = useState<State>({ phase: "loading" });
-  const { connectionEpoch, onMeetingChange } = useMeetingsRealtime();
+  const { status: rtStatus, connectionEpoch, onMeetingChange } = useMeetingsRealtime();
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -56,6 +56,15 @@ export function MeetingsList() {
       unsub();
     };
   }, [onMeetingChange, load]);
+
+  // Degraded mode: while realtime is NOT connected, poll gently so the list still updates.
+  useEffect(() => {
+    if (rtStatus === "connected") return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [rtStatus, load]);
 
   if (state.phase === "loading") {
     return (

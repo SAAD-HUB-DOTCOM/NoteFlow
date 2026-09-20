@@ -111,10 +111,11 @@ def extract_download_url(transcript_obj) -> str | None:
 
 # ── Job idempotency ─────────────────────────────────────────────────────────────
 
-def enqueue_job(db, meeting_id: str, job_type: str) -> bool:
+def enqueue_job(db, meeting_id: str, job_type: str, *, force: bool = False) -> bool:
     """Create a job row; returns True only if newly created (caller then schedules the work).
 
     Unique (meeting_id, type) guarantees duplicate webhook deliveries can't start duplicate work.
+    With force=True (manual reprocess), an existing job is reset to pending and True is returned.
     """
     db.add(Job(meeting_id=meeting_id, type=job_type, status="pending"))
     try:
@@ -122,6 +123,13 @@ def enqueue_job(db, meeting_id: str, job_type: str) -> bool:
         return True
     except IntegrityError:
         db.rollback()
+        if force:
+            job = _job(db, meeting_id, job_type)
+            if job:
+                job.status = "pending"
+                job.error = None
+                db.commit()
+                return True
         return False
 
 
@@ -135,12 +143,49 @@ def _job(db, meeting_id: str, job_type: str) -> Job | None:
 
 # ── Background runners (own their DB session) ────────────────────────────────────
 
+def _parse_iso(value):
+    from datetime import datetime
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def reconcile_recording(db, meeting, recall) -> bool:
+    """Fill recall_recording_id (+ real started/ended/duration) from the bot object when the
+    webhook payload didn't carry them. Returns True if the meeting has a recording id after."""
+    if meeting.recall_recording_id:
+        return True
+    if not meeting.recall_bot_id:
+        return False
+    bot = recall.get_bot(meeting.recall_bot_id)
+    recordings = bot.get("recordings") or []
+    if not recordings:
+        log.warning("reconcile meeting_id=%s: bot has no recordings yet", meeting.id)
+        return False
+    rec = recordings[-1]
+    meeting.recall_recording_id = rec.get("id")
+    started = _parse_iso(rec.get("started_at"))
+    ended = _parse_iso(rec.get("completed_at"))
+    if started and not meeting.started_at:
+        meeting.started_at = started
+    if ended and not meeting.ended_at:
+        meeting.ended_at = ended
+    if meeting.duration_seconds is None and started and ended:
+        meeting.duration_seconds = int((ended - started).total_seconds())
+    db.commit()
+    log.info("reconcile meeting_id=%s -> recording_id=%s", meeting.id, meeting.recall_recording_id)
+    return bool(meeting.recall_recording_id)
+
+
 def run_create_transcript(meeting_id: str) -> None:
     settings = get_settings()
     db = SessionLocal()
     try:
         meeting = db.get(Meeting, meeting_id)
-        if not meeting or not meeting.recall_recording_id:
+        if not meeting:
             return
         job = _job(db, meeting_id, "create_transcript")
         if job:
@@ -149,6 +194,9 @@ def run_create_transcript(meeting_id: str) -> None:
             db.commit()
         try:
             recall = get_recall_service(settings.recall_api_key, settings.recall_region)
+            # Real payloads may not carry the recording id — reconcile from the bot object.
+            if not reconcile_recording(db, meeting, recall):
+                raise RuntimeError("No recording found for this bot yet")
             log.info("create_transcript meeting_id=%s recording_id=%s -> calling Recall",
                      meeting_id, meeting.recall_recording_id)
             result = recall.create_transcript(meeting.recall_recording_id)
@@ -172,7 +220,7 @@ def run_process_transcript(meeting_id: str) -> None:
     db = SessionLocal()
     try:
         meeting = db.get(Meeting, meeting_id)
-        if not meeting or not meeting.recall_transcript_id:
+        if not meeting:
             return
         # Idempotent: segments already persisted → nothing to do.
         if db.query(TranscriptSegment).filter(TranscriptSegment.meeting_id == meeting_id).count():
@@ -184,8 +232,21 @@ def run_process_transcript(meeting_id: str) -> None:
             db.commit()
         try:
             recall = get_recall_service(settings.recall_api_key, settings.recall_region)
-            transcript_obj = recall.get_transcript(meeting.recall_transcript_id)
-            download_url = extract_download_url(transcript_obj)
+            download_url = None
+            if meeting.recall_transcript_id:
+                transcript_obj = recall.get_transcript(meeting.recall_transcript_id)
+                download_url = extract_download_url(transcript_obj)
+            else:
+                # Reconcile: the recording's media_shortcuts.transcript carries id + download_url.
+                bot = recall.get_bot(meeting.recall_bot_id) if meeting.recall_bot_id else {}
+                recordings = bot.get("recordings") or []
+                shortcut = ((recordings[-1] if recordings else {}).get("media_shortcuts") or {}).get("transcript") or {}
+                if shortcut.get("id"):
+                    meeting.recall_transcript_id = shortcut["id"]
+                    db.commit()
+                download_url = extract_download_url(shortcut) or (
+                    (shortcut.get("data") or {}).get("download_url") if isinstance(shortcut.get("data"), dict) else None
+                )
             if not download_url:
                 raise RuntimeError("Recall transcript has no download_url yet")
             payload = recall.download_transcript(download_url)

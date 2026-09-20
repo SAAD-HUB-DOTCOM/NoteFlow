@@ -44,6 +44,22 @@ class _FakeRecall:
     def download_transcript(self, url):
         return RECALL_TRANSCRIPT
 
+    def get_bot(self, bot_id):
+        """Shape confirmed against the real Recall API (GET /bot/{id}/)."""
+        return {
+            "id": bot_id,
+            "recordings": [
+                {
+                    "id": "rec_from_bot",
+                    "started_at": "2026-09-20T06:56:12.974512Z",
+                    "completed_at": "2026-09-20T06:56:36.489678Z",
+                    "media_shortcuts": {
+                        "transcript": {"id": "tr_from_bot", "data": {"download_url": "https://dl.example/x"}}
+                    },
+                }
+            ],
+        }
+
 
 # ── normalization (pure) ──────────────────────────────────────────────────────
 
@@ -138,6 +154,42 @@ def test_run_create_transcript_uses_recording_id(SessionFactory, monkeypatch):
     s.close()
 
 
+def test_run_create_transcript_reconciles_missing_recording_id(SessionFactory, monkeypatch):
+    """Real recording.done payloads may omit the recording id — the job must reconcile it from
+    the bot object (this was the production defect: jobs never ran, meetings stuck transcribing)."""
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_9", recall_recording_id=None)
+    fake = _FakeRecall()
+    monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
+    monkeypatch.setattr(tx, "get_recall_service", lambda k, r: fake)
+    s = SessionFactory(); s.add(Job(meeting_id=mid, type="create_transcript", status="pending")); s.commit(); s.close()
+
+    tx.run_create_transcript(mid)
+
+    s = SessionFactory()
+    m = s.get(Meeting, mid)
+    assert m.recall_recording_id == "rec_from_bot"
+    assert m.started_at is not None and m.ended_at is not None
+    assert m.duration_seconds == 23  # 06:56:12.97 -> 06:56:36.48
+    s.close()
+    assert fake.created_for == "rec_from_bot"
+
+
+def test_run_process_transcript_reconciles_missing_transcript_id(SessionFactory, monkeypatch):
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_10", recall_transcript_id=None, status="transcribing")
+    monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
+    monkeypatch.setattr(tx, "get_recall_service", lambda k, r: _FakeRecall())
+    s = SessionFactory(); s.add(Job(meeting_id=mid, type="process_transcript", status="pending")); s.commit(); s.close()
+
+    tx.run_process_transcript(mid)
+
+    s = SessionFactory()
+    m = s.get(Meeting, mid)
+    assert m.recall_transcript_id == "tr_from_bot"
+    assert m.status == "ready"
+    assert s.query(TranscriptSegment).filter_by(meeting_id=mid).count() == 2
+    s.close()
+
+
 def test_run_process_transcript_persists_and_is_idempotent(SessionFactory, monkeypatch):
     mid = _seed_meeting(SessionFactory, recall_transcript_id="tr_1", status="transcribing")
     monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
@@ -229,6 +281,47 @@ def test_transcript_done_persists_transcript_id_and_enqueues(client, SessionFact
     assert s.query(Job).filter_by(meeting_id=mid, type="process_transcript").count() == 1
     s.close()
     assert calls == [mid]
+
+
+def test_real_event_names_drive_status(client, SessionFactory):
+    """Live Recall events are named bot.<code> with data.data.code — status must map from them
+    (this was why the UI stayed stuck on 'joining' during a real call)."""
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_live", status="joining")
+    flow = [
+        ("bot.in_waiting_room", "in_waiting_room"),
+        ("bot.in_call_recording", "recording"),
+        ("bot.call_ended", "recording_complete"),
+    ]
+    for i, (event, expected) in enumerate(flow):
+        body = {"event": event, "data": {"data": {"code": event[4:]}, "bot": {"id": "bot_live"}}}
+        raw, headers = _signed(body, f"live-{i}")
+        assert client.post("/webhooks/recall", content=raw, headers=headers).status_code == 200
+        s = SessionFactory()
+        assert s.get(Meeting, mid).status == expected, event
+        s.close()
+
+
+def test_capture_sets_default_title(client):
+    r = client.post("/api/v1/meetings/capture", json={"meeting_url": "https://meet.google.com/abc-defg-hij"})
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "Google Meet meeting"
+
+
+def test_reprocess_endpoint_forces_pipeline(client, SessionFactory, monkeypatch):
+    import app.api as apimod
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_r", status="failed")
+    calls = []
+    monkeypatch.setattr(apimod, "run_create_transcript", lambda meeting_id: calls.append(meeting_id))
+    # pre-existing failed job must not block reprocess (force=True path)
+    s = SessionFactory(); s.add(Job(meeting_id=mid, type="create_transcript", status="failed")); s.commit(); s.close()
+
+    r = client.post(f"/api/v1/meetings/{mid}/reprocess")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "transcribing"
+    assert calls == [mid]
+    s = SessionFactory()
+    assert s.query(Job).filter_by(meeting_id=mid, type="create_transcript").one().status == "pending"
+    s.close()
 
 
 def test_transcript_failed_sets_failure(client, SessionFactory):

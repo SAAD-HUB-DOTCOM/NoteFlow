@@ -41,6 +41,14 @@ class RecallService:
             resp.raise_for_status()
             return resp.json()
 
+    def get_bot(self, bot_id: str) -> dict:
+        """Fetch the bot object — includes recordings[] (id, started_at, completed_at,
+        media_shortcuts.transcript). Used to reconcile ids when a webhook payload lacks them."""
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(f"{self.base_url}/bot/{bot_id}/", headers=self._headers())
+            resp.raise_for_status()
+            return resp.json()
+
     def create_transcript(self, recording_id: str) -> dict:
         """Start an async AssemblyAI transcript for a recording (Phase 4).
 

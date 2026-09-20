@@ -22,7 +22,7 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
   const [transcript, setTranscript] = useState<TranscriptDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { connectionEpoch, onMeetingChange } = useMeetingsRealtime();
+  const { status: rtStatus, connectionEpoch, onMeetingChange } = useMeetingsRealtime();
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -49,7 +49,7 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
     if (connectionEpoch > 0) void load();
   }, [connectionEpoch, load]);
 
-  // Live updates: a meeting broadcast → debounced REST refetch (no polling).
+  // Live updates: a meeting broadcast → debounced REST refetch.
   useEffect(() => {
     const unsub = onMeetingChange(() => {
       if (debounce.current) clearTimeout(debounce.current);
@@ -60,6 +60,15 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
       unsub();
     };
   }, [onMeetingChange, load]);
+
+  // Degraded mode: while realtime is NOT connected, poll gently so the page still updates.
+  useEffect(() => {
+    if (rtStatus === "connected") return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [rtStatus, load]);
 
   if (loading) return <WorkspaceSkeleton />;
 
