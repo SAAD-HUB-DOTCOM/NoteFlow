@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        width: 288px; margin: 0; padding: 16px;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #0F0F1A; color: #F5F5F7;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+      .brand .name { font-weight: 600; letter-spacing: -0.01em; }
+      .status { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 14px;
+        border: 1px solid #2D2D45; background: #1A1A2E; border-radius: 10px; padding: 10px 12px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+      .ok { background: #00D9C0; } .off { background: #FF6B6B; }
+      .muted { color: #9B9BAE; font-size: 13px; line-height: 1.5; }
+      button {
+        width: 100%; cursor: pointer; border: 0; border-radius: 9px; margin-top: 8px;
+        background: #6C5CE7; color: #fff; font-weight: 600; font-size: 13px; padding: 10px;
+        font-family: inherit;
+      }
+      button:hover { background: #5B4BD6; }
+      button.ghost { background: transparent; border: 1px solid #2D2D45; color: #F5F5F7; }
+      .hint { margin-top: 12px; font-size: 12.5px; color: #9B9BAE; line-height: 1.5; }
+      code { color: #8B7CF6; }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#1A1A2E" stroke="#2D2D45" />
+        <rect x="7" y="15" width="2.4" height="4" rx="1.2" fill="#6C5CE7" opacity="0.5" />
+        <rect x="11" y="11" width="2.4" height="8" rx="1.2" fill="#6C5CE7" opacity="0.75" />
+        <rect x="15" y="7" width="2.4" height="14" rx="1.2" fill="#6C5CE7" />
+        <rect x="19" y="12.5" width="2.4" height="5" rx="1.2" fill="#00D9C0" opacity="0.9" />
+      </svg>
+      <span class="name">NoteFlow Capture</span>
+    </div>
+
+    <div class="status"><span class="dot" id="dot"></span><span id="status-text">Checking…</span></div>
+
+    <div class="muted">
+      Open a Google Meet, Zoom, or Teams call and click <strong>Record</strong> on the NoteFlow
+      widget — no link to paste. Captures appear in your meetings automatically.
+    </div>
+
+    <button id="open-app">Open My Meetings</button>
+    <button class="ghost" id="sign-in">Sign in to NoteFlow</button>
+
+    <p class="hint">
+      Signed-in status is read from the NoteFlow app. If it says signed out, open the app and
+      sign in once.
+    </p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

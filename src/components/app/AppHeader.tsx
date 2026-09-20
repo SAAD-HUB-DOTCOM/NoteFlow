@@ -25,6 +25,12 @@ export function AppHeader({ email }: { email: string | null }) {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <Link
+            href="/extension"
+            className="hidden rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover md:block"
+          >
+            Get extension
+          </Link>
           <RecordMeetingButton />
           <button
             type="button"

@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "NoteFlow Meeting Capture",
+  "version": "0.1.0",
+  "description": "Capture meetings with NoteFlow in one click — no link pasting. Detects Google Meet, Zoom, and Microsoft Teams and sends the NoteFlow notetaker.",
+  "permissions": ["cookies", "storage"],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://teams.microsoft.com/*",
+    "https://teams.live.com/*",
+    "https://noteflow--ai.vercel.app/*",
+    "https://note-flow-eight-blue.vercel.app/*",
+    "https://noteflow-production-644c.up.railway.app/*",
+    "http://localhost:3000/*",
+    "http://localhost:3100/*",
+    "http://localhost:8000/*",
+    "https://nujbrwztoflmvfrcspyg.supabase.co/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "NoteFlow",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://noteflow--ai.vercel.app/*",
+        "https://note-flow-eight-blue.vercel.app/*",
+        "http://localhost:3000/*",
+        "http://localhost:3100/*"
+      ],
+      "js": ["content-app.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
