@@ -82,6 +82,18 @@ class AskOut(BaseModel):
     citations: list[str]  # real transcript_segment ids, validated
 
 
+class AskCitation(BaseModel):
+    segment_id: str
+    meeting_id: str
+    meeting_title: str
+    start: float  # seconds
+
+
+class AskAllOut(BaseModel):
+    answer: str
+    citations: list[AskCitation]
+
+
 class RecordingOut(BaseModel):
     meeting_id: str
     status: str  # ready | processing | unavailable

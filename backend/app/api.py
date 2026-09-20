@@ -13,6 +13,7 @@ from app.models import (
     UserPreferences,
 )
 from app.schemas import (
+    AskAllOut,
     AskIn,
     AskOut,
     CaptureIn,
@@ -34,7 +35,11 @@ from app.services.recall import (
     get_recall_service,
     provider_from_url,
 )
-from app.services.intelligence import GroqNotConfigured, answer_question
+from app.services.intelligence import (
+    GroqNotConfigured,
+    answer_across_meetings,
+    answer_question,
+)
 from app.services.transcription import enqueue_job, run_create_transcript
 
 router = APIRouter()
@@ -214,6 +219,36 @@ def list_meetings(
         .order_by(Meeting.created_at.desc())
         .all()
     )
+
+
+@router.post("/ask", response_model=AskAllOut, tags=["meetings"])
+def ask_all_meetings(
+    payload: AskIn,
+    user: CurrentUser = Depends(get_current_user),
+) -> AskAllOut:
+    """Ask NoteFlow across ALL of the signed-in user's meetings, grounded in their real transcripts.
+
+    Groq answers only from the user's own transcripts; citations are validated to real segments and
+    carry their meeting so the UI can link back. The Groq credential never reaches the browser.
+    """
+    question = (payload.question or "").strip()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Ask a question first."
+        )
+    try:
+        result = answer_across_meetings(user.id, question)
+    except GroqNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Ask NoteFlow isn't configured yet (GROQ_API_KEY missing).",
+        )
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't reach the answer service. Try again in a moment.",
+        )
+    return AskAllOut(**result)
 
 
 @router.get("/meetings/{meeting_id}", response_model=MeetingOut, tags=["meetings"])

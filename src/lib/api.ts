@@ -77,6 +77,18 @@ export interface AskDTO {
   citations: string[]; // real transcript_segment ids
 }
 
+export interface AskCitation {
+  segment_id: string;
+  meeting_id: string;
+  meeting_title: string;
+  start: number; // seconds
+}
+
+export interface AskAllDTO {
+  answer: string;
+  citations: AskCitation[];
+}
+
 export interface RecordingDTO {
   meeting_id: string;
   status: "ready" | "processing" | "unavailable";

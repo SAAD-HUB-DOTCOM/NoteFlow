@@ -3,7 +3,7 @@ import { AskSidebar } from "@/components/app/AskSidebar";
 
 /**
  * My Meetings (authenticated) — real captured meetings from the backend (GET /api/v1/meetings),
- * no seeded data. Ask NoteFlow stays honestly disabled (a later phase).
+ * no seeded data. Ask NoteFlow answers across the user's real meetings (POST /api/v1/ask).
  */
 export const metadata = { title: "My Meetings — NoteFlow" };
 
@@ -21,7 +21,7 @@ export default function MeetingsPage() {
       </main>
 
       <div className="hidden w-[360px] shrink-0 lg:block">
-        <AskSidebar hasMeetings={false} />
+        <AskSidebar />
       </div>
     </>
   );

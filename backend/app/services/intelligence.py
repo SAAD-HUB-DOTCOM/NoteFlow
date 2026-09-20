@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 
 import httpx
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import MeetingIntelligence, TranscriptSegment
+from app.models import Meeting, MeetingIntelligence, TranscriptSegment
 
 log = logging.getLogger("noteflow.intelligence")
 
@@ -175,6 +176,126 @@ def answer_question(meeting_id: str, question: str) -> dict | None:
         # If the model admits it couldn't find the answer, citations are meaningless — drop them.
         if answer == _NOT_FOUND:
             citations = []
+        return {"answer": answer, "citations": citations}
+    finally:
+        db.close()
+
+
+# ── Cross-meeting Ask (account-level dashboard) ─────────────────────────────────
+
+_ASK_ALL_SYSTEM = (
+    "You answer questions across a user's OWN recorded meetings using ONLY the provided transcripts. "
+    "Lines are grouped under a meeting header and prefixed with a ref like [S3 00:14]. Return ONLY "
+    'JSON: {"answer": str, "citations": [str]}. Cite the refs that support your answer as their S# '
+    'token only (e.g. "S3"); use ONLY refs that appear below, never invent them. When the question '
+    "is time-relative (today, this week), use the given today's date and each meeting's date. If the "
+    "transcripts do not contain the answer, set answer to exactly \"I couldn't find that across your "
+    "meetings.\" and citations to []. Do not use outside knowledge. Be concise; refer to meetings by "
+    "name."
+)
+
+_NOT_FOUND_ALL = "I couldn't find that across your meetings."
+# Bound the prompt so a large history can't blow the context window (MVP: no embeddings).
+_ASK_ALL_CHAR_BUDGET = 80_000
+
+
+def _call_ask_all_groq(transcript_text: str, question: str, today: str) -> dict:
+    settings = get_settings()
+    if not settings.groq_api_key:
+        raise GroqNotConfigured("GROQ_API_KEY is not configured.")
+    resp = httpx.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {settings.groq_api_key}", "Content-Type": "application/json"},
+        json={
+            "model": settings.groq_model,
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": _ASK_ALL_SYSTEM},
+                {
+                    "role": "user",
+                    "content": f"Today's date: {today}\n\nMeetings:\n{transcript_text}\n\nQuestion: {question}",
+                },
+            ],
+        },
+        timeout=90,
+    )
+    resp.raise_for_status()
+    return json.loads(resp.json()["choices"][0]["message"]["content"])
+
+
+def answer_across_meetings(owner_user_id: str, question: str) -> dict:
+    """Answer a question grounded in ALL of the user's transcribed meetings.
+
+    Returns {"answer": str, "citations": [{segment_id, meeting_id, meeting_title, start}]}. Citations
+    are validated to real segments (invented refs dropped). Never fabricates: unsupported questions
+    get an honest "couldn't find it". Prompt size is capped (no embeddings in this MVP), so the
+    newest meetings are prioritized and older ones may be omitted when the history is very large.
+    """
+    db = SessionLocal()
+    try:
+        meetings = (
+            db.query(Meeting)
+            .filter(Meeting.owner_user_id == owner_user_id)
+            .order_by(Meeting.created_at.desc())
+            .all()
+        )
+        blocks: list[str] = []
+        ref_map: dict[str, dict] = {}
+        counter = 0
+        chars = 0
+        truncated = False
+        for m in meetings:
+            segs = (
+                db.query(TranscriptSegment)
+                .filter(TranscriptSegment.meeting_id == m.id)
+                .order_by(TranscriptSegment.sequence)
+                .all()
+            )
+            if not segs:
+                continue
+            title = m.title or "Untitled meeting"
+            when = (m.started_at or m.created_at)
+            header = f"=== Meeting: {title} ({when.date().isoformat()}) ==="
+            local: list[tuple[str, dict]] = []
+            lines = [header]
+            for seg in segs:
+                counter += 1
+                ref = f"S{counter}"
+                lines.append(f"[{ref} {_mmss(seg.start_ms)}] {seg.speaker_label or 'Speaker'}: {seg.text}")
+                local.append((ref, {
+                    "segment_id": seg.id,
+                    "meeting_id": m.id,
+                    "meeting_title": title,
+                    "start": seg.start_ms / 1000.0,
+                }))
+            block = "\n".join(lines)
+            # Always include at least the newest meeting; stop before exceeding the budget after that.
+            if blocks and chars + len(block) > _ASK_ALL_CHAR_BUDGET:
+                counter -= len(local)
+                truncated = True
+                break
+            chars += len(block)
+            blocks.append(block)
+            for ref, info in local:
+                ref_map[ref] = info
+
+        if not blocks:
+            return {"answer": "You don't have any transcribed meetings to ask about yet.", "citations": []}
+        if truncated:
+            log.info("ask-all owner=%s: history truncated to %d chars", owner_user_id, chars)
+
+        today = datetime.now(timezone.utc).date().isoformat()
+        raw = _call_ask_all_groq("\n\n".join(blocks), question, today)
+        answer = str(raw.get("answer") or "").strip() or _NOT_FOUND_ALL
+        citations: list[dict] = []
+        if answer != _NOT_FOUND_ALL and isinstance(raw.get("citations"), list):
+            seen: set[str] = set()
+            for r in raw["citations"]:
+                info = ref_map.get(str(r))
+                if info and info["segment_id"] not in seen:
+                    seen.add(info["segment_id"])
+                    citations.append(info)
         return {"answer": answer, "citations": citations}
     finally:
         db.close()
