@@ -40,6 +40,22 @@ class _FakeRecall:
     def create_bot(self, meeting_url: str, bot_name: str = "NoteFlow Notetaker") -> dict:
         return {"id": "bot_123"}
 
+    def get_bot(self, bot_id: str) -> dict:
+        # A finalized bot with a mixed video recording ready for playback.
+        return {
+            "id": bot_id,
+            "recordings": [
+                {
+                    "media_shortcuts": {
+                        "video_mixed": {
+                            "status": {"code": "done"},
+                            "data": {"download_url": "https://recall.example/mixed.mp4?sig=abc"},
+                        }
+                    }
+                }
+            ],
+        }
+
 
 @pytest.fixture()
 def client(SessionFactory, test_settings, monkeypatch):

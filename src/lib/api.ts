@@ -72,6 +72,14 @@ export interface TranscriptDTO {
   segments: TranscriptSegmentDTO[];
 }
 
+export interface RecordingDTO {
+  meeting_id: string;
+  status: "ready" | "processing" | "unavailable";
+  media_type: "video" | "audio" | null;
+  url: string | null;
+  duration_seconds: number | null;
+}
+
 export interface IntelligenceContent {
   summary: string;
   key_points: string[];

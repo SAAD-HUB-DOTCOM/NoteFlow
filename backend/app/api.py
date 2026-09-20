@@ -22,11 +22,13 @@ from app.schemas import (
     MeUpdate,
     PreferencesOut,
     PreferencesUpdate,
+    RecordingOut,
     TranscriptSegmentOut,
 )
 from app.security import CurrentUser, get_current_user
 from app.services.recall import (
     RecallNotConfigured,
+    extract_recording_playback,
     get_recall_service,
     provider_from_url,
 )
@@ -283,6 +285,56 @@ def get_meeting_transcript(
         for r in rows
     ]
     return MeetingTranscriptOut(meeting_id=meeting.id, status=meeting.status, segments=segments)
+
+
+@router.get(
+    "/meetings/{meeting_id}/recording",
+    response_model=RecordingOut,
+    tags=["meetings"],
+)
+def get_meeting_recording(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> RecordingOut:
+    """Fresh Recall mixed-recording playback URL for a meeting (owner-scoped).
+
+    The URL is presigned + expiring, so it's fetched live from Recall on each request and never
+    persisted. Returns `ready` (url present), `processing` (recording not finalized), or
+    `unavailable` (no bot/recording). The Recall API key never reaches the browser.
+    """
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    if not meeting.recall_bot_id:
+        return RecordingOut(
+            meeting_id=meeting.id,
+            status="unavailable",
+            duration_seconds=meeting.duration_seconds,
+        )
+    try:
+        recall = get_recall_service(settings.recall_api_key, settings.recall_region)
+    except RecallNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Recording playback isn't configured yet (RECALL_API_KEY missing).",
+        )
+    try:
+        bot = recall.get_bot(meeting.recall_bot_id)
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't reach Recall to load the recording.",
+        )
+    playback = extract_recording_playback(bot)
+    return RecordingOut(
+        meeting_id=meeting.id,
+        status=playback["status"],
+        media_type=playback["media_type"],
+        url=playback["url"],
+        duration_seconds=meeting.duration_seconds,
+    )
 
 
 @router.get(

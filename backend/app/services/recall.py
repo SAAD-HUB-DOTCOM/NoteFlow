@@ -88,6 +88,26 @@ class RecallService:
             return resp.json()
 
 
+def extract_recording_playback(bot: dict) -> dict:
+    """From a bot object, return the mixed recording playback info (video preferred, then audio).
+
+    Returns {status, url, media_type}: status is 'ready' (url present), 'processing' (recording
+    exists but media not ready), or 'unavailable' (no recording). URLs are presigned + expiring, so
+    callers fetch them fresh and never persist them.
+    """
+    recordings = bot.get("recordings") or []
+    if not recordings:
+        return {"status": "unavailable", "url": None, "media_type": None}
+    ms = recordings[-1].get("media_shortcuts") or {}
+    for key, media_type in (("video_mixed", "video"), ("audio_mixed", "audio")):
+        obj = ms.get(key) or {}
+        data = obj.get("data") if isinstance(obj.get("data"), dict) else {}
+        url = data.get("download_url")
+        if url:
+            return {"status": "ready", "url": url, "media_type": media_type}
+    return {"status": "processing", "url": None, "media_type": None}
+
+
 def get_recall_service(api_key: str | None, region: str) -> RecallService:
     if not api_key:
         raise RecallNotConfigured("RECALL_API_KEY is not configured.")

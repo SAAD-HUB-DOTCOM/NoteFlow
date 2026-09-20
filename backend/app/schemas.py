@@ -73,6 +73,14 @@ class MeetingTranscriptOut(BaseModel):
     segments: list[TranscriptSegmentOut]
 
 
+class RecordingOut(BaseModel):
+    meeting_id: str
+    status: str  # ready | processing | unavailable
+    media_type: str | None = None  # video | audio
+    url: str | None = None  # presigned, expiring — not persisted
+    duration_seconds: int | None = None
+
+
 class MeetingIntelligenceOut(BaseModel):
     meeting_id: str
     # "ready" (content present) | "generating" (transcript ready, insights pending) |

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { StatusChip } from "@/components/app/StatusChip";
 import { ConnectionBadge } from "@/components/app/ConnectionBadge";
 import { MeetingInsights } from "@/components/app/MeetingInsights";
+import { RecordingPlayer, type RecordingPlayerHandle } from "@/components/app/RecordingPlayer";
 import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { CalendarIcon, ChevronRightIcon, ClockIcon, MicIcon, UsersIcon } from "@/components/icons";
 
@@ -25,6 +26,8 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
   const [error, setError] = useState<string | null>(null);
   const { status: rtStatus, connectionEpoch, onMeetingChange } = useMeetingsRealtime();
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerRef = useRef<RecordingPlayerHandle>(null);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -158,9 +161,14 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
           />
         ) : (
           <div className="max-w-reading">
+            <RecordingPlayer ref={playerRef} meetingId={meeting.id} onTime={setCurrentTime} />
             <MeetingInsights meetingId={meeting.id} />
             <h2 className="mb-3 text-sm font-semibold text-foreground">Transcript</h2>
-            <Transcript segments={segments} />
+            <Transcript
+              segments={segments}
+              currentTime={currentTime}
+              onSeek={(seconds) => playerRef.current?.seekTo(seconds)}
+            />
           </div>
         )}
       </div>
@@ -168,20 +176,69 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
   );
 }
 
-function Transcript({ segments }: { segments: TranscriptDTO["segments"] }) {
+function Transcript({
+  segments,
+  currentTime,
+  onSeek,
+}: {
+  segments: TranscriptDTO["segments"];
+  currentTime: number;
+  onSeek: (seconds: number) => void;
+}) {
+  // Active segment per the spec: start <= currentTime < end (seconds; backend already divides ms).
+  const activeId = segments.find((s) => s.start <= currentTime && currentTime < s.end)?.id ?? null;
+
+  const activeRef = useRef<HTMLLIElement>(null);
+  // Pause auto-scroll briefly after the user scrolls, so we don't fight manual reading.
+  const pausedRef = useRef(false);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onManualScroll = () => {
+    pausedRef.current = true;
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => {
+      pausedRef.current = false;
+    }, 5000);
+  };
+
+  useEffect(() => {
+    if (!activeId || pausedRef.current) return;
+    activeRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeId]);
+
+  useEffect(() => () => {
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+  }, []);
+
   return (
-    <ol className="max-w-reading space-y-0.5">
+    <ol
+      className="max-w-reading space-y-0.5"
+      onWheel={onManualScroll}
+      onTouchMove={onManualScroll}
+    >
       {segments.map((seg) => {
         const name = seg.speaker || "Speaker";
+        const isActive = seg.id === activeId;
         return (
-          <li key={seg.id} className="flex gap-3 rounded-lg px-3 py-2.5">
+          <li
+            key={seg.id}
+            ref={isActive ? activeRef : null}
+            onClick={() => onSeek(seg.start)}
+            className={`flex cursor-pointer gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+              isActive ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-surface-hover"
+            }`}
+          >
             <span className="grid h-7 w-7 shrink-0 place-items-center self-start rounded-full bg-surface-hover text-[0.65rem] font-medium text-foreground/90 ring-1 ring-border/60">
               {initialsFrom(name)}
             </span>
             <span className="min-w-0 flex-1">
               <span className="mb-0.5 flex items-center gap-2">
                 <span className="text-sm font-semibold text-foreground/90">{name}</span>
-                <span className="font-mono text-xs tabular-nums text-muted">
+                <span
+                  className={`font-mono text-xs tabular-nums ${
+                    isActive ? "text-primary" : "text-muted"
+                  }`}
+                >
                   {formatTimestamp(seg.start)}
                 </span>
               </span>
