@@ -5,13 +5,19 @@ import { useEffect, useRef, useState } from "react";
 /**
  * The cosmic hero background loop. It mounts only when the visitor hasn't asked for reduced
  * motion — otherwise it renders nothing and the CSS starfield beneath it stays as the calm,
- * still fallback. The src lives on the element (not a <source> child) and we nudge load()/play()
- * on mount, since React-rendered <video autoplay> doesn't reliably kick off on its own. It fades
- * in once it can play, and a left/bottom scrim keeps the headline legible over any frame.
+ * still fallback.
+ *
+ * Mobile autoplay is strict (iOS Safari, Low Power Mode, Data Saver), so:
+ * - muted/playsInline are ALSO set imperatively before play() — React applies them as
+ *   properties late, and iOS rejects autoplay if they aren't in place first;
+ * - the video only fades in on `playing`. If playback is blocked it stays invisible, so the
+ *   page shows the starfield rather than a frozen frame with the OS play glyph;
+ * - the first touch/click anywhere retries play() — that gesture is what unlocks video when
+ *   the OS blocked autoplay outright (e.g. Low Power Mode).
  */
 export function HeroVideo() {
   const [show, setShow] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -25,10 +31,30 @@ export function HeroVideo() {
   useEffect(() => {
     const v = ref.current;
     if (!show || !v) return;
+
+    v.muted = true;
+    v.playsInline = true;
+    v.setAttribute("muted", "");
+
+    const tryPlay = () => {
+      v.play().catch(() => {
+        /* blocked — stays invisible; the gesture listener below retries */
+      });
+    };
+
     v.load();
-    v.play().catch(() => {
-      // Autoplay can be refused until interaction; the still starfield stays visible until then.
-    });
+    tryPlay();
+    v.addEventListener("canplay", tryPlay);
+
+    const gesture = () => tryPlay();
+    window.addEventListener("touchstart", gesture, { once: true, passive: true });
+    window.addEventListener("pointerdown", gesture, { once: true });
+
+    return () => {
+      v.removeEventListener("canplay", tryPlay);
+      window.removeEventListener("touchstart", gesture);
+      window.removeEventListener("pointerdown", gesture);
+    };
   }, [show]);
 
   if (!show) return null;
@@ -44,9 +70,10 @@ export function HeroVideo() {
         playsInline
         preload="auto"
         aria-hidden="true"
-        onCanPlay={() => setReady(true)}
+        onPlaying={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-          ready ? "opacity-[0.6]" : "opacity-0"
+          playing ? "opacity-[0.6]" : "opacity-0"
         }`}
       />
       {/* legibility scrims: keep the lower-left (headline + CTA) grounded in the base color */}
