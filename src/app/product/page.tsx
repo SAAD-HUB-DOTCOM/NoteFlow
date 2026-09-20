@@ -7,6 +7,7 @@ import { AppPreview } from "@/components/landing/AppPreview";
 import { Starfield } from "@/components/landing/Starfield";
 import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
+import { ExtensionDownload } from "@/components/landing/ExtensionDownload";
 import { LockIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
@@ -68,13 +69,8 @@ function Hero() {
             Record any call and get a clean recap the moment you hang up — then ask it anything,
             weeks later. No bot in the meeting unless you want one.
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-x-7 gap-y-4">
-            <Link
-              href="/login"
-              className="rounded-full bg-primary px-8 py-4 font-display text-[0.95rem] font-semibold text-white shadow-lg shadow-primary/30 transition-colors hover:bg-primary-hover"
-            >
-              Get started — free forever
-            </Link>
+          <div className="mt-9 flex flex-col items-start gap-4">
+            <ExtensionDownload />
             <Link
               href="/meeting/noteflow-product-planning"
               className="font-display text-sm font-medium text-foreground underline decoration-muted/60 underline-offset-[6px] transition-colors hover:decoration-primary"
@@ -366,18 +362,13 @@ function FinalCta() {
         <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted">
           Start free, and let your next call take care of itself.
         </p>
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href="/login"
-            className="rounded-full bg-primary px-8 py-3.5 font-display text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary-hover"
-          >
-            Get started — free forever
-          </Link>
+        <div className="mt-10 flex flex-col items-center gap-5">
+          <ExtensionDownload align="center" />
           <Link
             href="/meeting/noteflow-product-planning"
-            className="rounded-full border border-border bg-surface/60 px-7 py-3.5 font-display text-sm font-semibold text-foreground transition-colors hover:bg-surface-hover"
+            className="font-display text-sm font-medium text-foreground underline decoration-muted/60 underline-offset-[6px] transition-colors hover:decoration-primary"
           >
-            See an example meeting
+            or see an example meeting
           </Link>
         </div>
       </div>
