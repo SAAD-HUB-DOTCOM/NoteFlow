@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, ApiError, type MeetingDTO } from "@/lib/api";
 import { RealMeetingCard } from "@/components/app/RealMeetingCard";
 import { RecordMeetingButton } from "@/components/app/RecordMeetingButton";
+import { ConnectionBadge } from "@/components/app/ConnectionBadge";
+import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { Skeleton } from "@/components/Skeleton";
 import { MicIcon } from "@/components/icons";
 
@@ -12,25 +14,48 @@ type State =
   | { phase: "error"; message: string }
   | { phase: "ready"; meetings: MeetingDTO[] };
 
-/** Real meetings for the signed-in user (GET /api/v1/meetings) with truthful states. */
+/**
+ * Real meetings (GET /api/v1/meetings) with truthful states. Reflects lifecycle changes live via
+ * Supabase Realtime — refetches REST on a broadcast (the source of truth) and on every reconnect.
+ */
 export function MeetingsList() {
   const [state, setState] = useState<State>({ phase: "loading" });
+  const { connectionEpoch, onMeetingChange } = useMeetingsRealtime();
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    apiFetch<MeetingDTO[]>("/api/v1/meetings")
-      .then((meetings) => alive && setState({ phase: "ready", meetings }))
-      .catch((e) =>
-        alive &&
-        setState({
-          phase: "error",
-          message: e instanceof ApiError ? e.message : "Couldn’t load your meetings.",
-        }),
-      );
-    return () => {
-      alive = false;
-    };
+  const load = useCallback(async () => {
+    try {
+      const meetings = await apiFetch<MeetingDTO[]>("/api/v1/meetings");
+      setState({ phase: "ready", meetings });
+    } catch (e) {
+      setState({
+        phase: "error",
+        message: e instanceof ApiError ? e.message : "Couldn’t load your meetings.",
+      });
+    }
   }, []);
+
+  // Initial load.
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Refetch on each (re)connect so we never miss a change while offline.
+  useEffect(() => {
+    if (connectionEpoch > 0) void load();
+  }, [connectionEpoch, load]);
+
+  // Refetch (debounced) when a meeting broadcast arrives.
+  useEffect(() => {
+    const unsub = onMeetingChange(() => {
+      if (debounce.current) clearTimeout(debounce.current);
+      debounce.current = setTimeout(() => void load(), 300);
+    });
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+      unsub();
+    };
+  }, [onMeetingChange, load]);
 
   if (state.phase === "loading") {
     return (
@@ -57,27 +82,37 @@ export function MeetingsList() {
 
   if (state.meetings.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-border bg-surface">
-          <MicIcon className="h-5 w-5 text-muted" />
+      <div>
+        <div className="mb-3 flex justify-end">
+          <ConnectionBadge />
         </div>
-        <p className="text-base font-medium text-foreground">No meetings yet</p>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">
-          Record your first meeting — NoteFlow joins, captures it, and transcribes it
-          automatically.
-        </p>
-        <div className="mt-5 flex justify-center">
-          <RecordMeetingButton label="Record a meeting" />
+        <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-border bg-surface">
+            <MicIcon className="h-5 w-5 text-muted" />
+          </div>
+          <p className="text-base font-medium text-foreground">No meetings yet</p>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">
+            Record your first meeting — NoteFlow joins, captures it, and transcribes it
+            automatically.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <RecordMeetingButton label="Record a meeting" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-3">
-      {state.meetings.map((m) => (
-        <RealMeetingCard key={m.id} meeting={m} />
-      ))}
+    <div>
+      <div className="mb-3 flex justify-end">
+        <ConnectionBadge />
+      </div>
+      <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-3">
+        {state.meetings.map((m) => (
+          <RealMeetingCard key={m.id} meeting={m} />
+        ))}
+      </div>
     </div>
   );
 }

@@ -245,6 +245,28 @@ def test_transcript_failed_sets_failure(client, SessionFactory):
 
 # ── read endpoint ───────────────────────────────────────────────────────────────
 
+def test_transcript_endpoint_200_empty_while_processing(client, SessionFactory):
+    """An existing meeting with no segments yet returns 200 + empty segments (NOT 404), so the
+    workspace opens while transcribing."""
+    mid = _seed_meeting(SessionFactory, status="transcribing")
+    r = client.get(f"/api/v1/meetings/{mid}/transcript")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body == {"meeting_id": mid, "status": "transcribing", "segments": []}
+
+
+def test_recording_done_extracts_flat_recording_id(client, SessionFactory, monkeypatch):
+    """Broadened extraction also handles data.recording_id (flat) shape."""
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_flat", status="recording")
+    monkeypatch.setattr(webhooks, "run_create_transcript", lambda meeting_id: None)
+    body = {"event": "recording.done", "data": {"bot_id": "bot_flat", "recording_id": "rec_flat"}}
+    raw, headers = _signed(body, "flat-1")
+    assert client.post("/webhooks/recall", content=raw, headers=headers).status_code == 200
+    s = SessionFactory()
+    assert s.get(Meeting, mid).recall_recording_id == "rec_flat"
+    s.close()
+
+
 def test_get_meeting_transcript_endpoint(client, SessionFactory):
     mid = _seed_meeting(SessionFactory, status="ready")
     s = SessionFactory()

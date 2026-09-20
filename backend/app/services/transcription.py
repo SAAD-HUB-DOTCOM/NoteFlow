@@ -7,6 +7,8 @@ is unit-tested with a representative fixture.
 """
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
@@ -15,6 +17,7 @@ from app.models import Job, Meeting, TranscriptSegment
 from app.services.recall import get_recall_service
 
 DEFAULT_SOURCE = "assembly_ai_async"
+log = logging.getLogger("noteflow.transcription")
 
 
 # ── Normalization (pure) ────────────────────────────────────────────────────────
@@ -146,13 +149,18 @@ def run_create_transcript(meeting_id: str) -> None:
             db.commit()
         try:
             recall = get_recall_service(settings.recall_api_key, settings.recall_region)
-            recall.create_transcript(meeting.recall_recording_id)
+            log.info("create_transcript meeting_id=%s recording_id=%s -> calling Recall",
+                     meeting_id, meeting.recall_recording_id)
+            result = recall.create_transcript(meeting.recall_recording_id)
+            log.info("create_transcript meeting_id=%s accepted by Recall transcript_id=%s",
+                     meeting_id, (result or {}).get("id"))
             if job:
                 job.status = "succeeded"
                 job.error = None
             db.commit()
         except Exception as exc:  # noqa: BLE001 — persist truthful failure, never fake success
             db.rollback()
+            log.exception("create_transcript FAILED meeting_id=%s: %s", meeting_id, exc)
             _record_failure(db, meeting_id, job_type="create_transcript",
                             code="create_transcript_failed", message=str(exc))
     finally:
@@ -192,10 +200,14 @@ def run_process_transcript(meeting_id: str) -> None:
                 job.status = "succeeded"
                 job.error = None
             db.commit()  # atomic: segments + status + job together
+            log.info("process_transcript meeting_id=%s persisted %d segments -> ready",
+                     meeting_id, len(segments))
         except IntegrityError:
             db.rollback()  # concurrent run already inserted segments — treat as done
+            log.info("process_transcript meeting_id=%s: segments already present (concurrent)", meeting_id)
         except Exception as exc:  # noqa: BLE001
             db.rollback()
+            log.exception("process_transcript FAILED meeting_id=%s: %s", meeting_id, exc)
             _record_failure(db, meeting_id, job_type="process_transcript",
                             code="transcript_processing_failed", message=str(exc))
     finally:

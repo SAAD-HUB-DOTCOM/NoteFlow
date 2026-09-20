@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError, type MeetingDTO, type TranscriptDTO } from "@/lib/api";
-import { isInFlight, statusKind, statusLabel } from "@/lib/meetingStatus";
+import { statusKind, statusLabel } from "@/lib/meetingStatus";
 import { formatDuration, formatFullDate, formatTimestamp, initialsFrom } from "@/lib/format";
 import { Skeleton } from "@/components/Skeleton";
 import { StatusChip } from "@/components/app/StatusChip";
+import { ConnectionBadge } from "@/components/app/ConnectionBadge";
+import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { CalendarIcon, ChevronRightIcon, ClockIcon, MicIcon, UsersIcon } from "@/components/icons";
 
 /**
@@ -20,6 +22,8 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
   const [transcript, setTranscript] = useState<TranscriptDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { connectionEpoch, onMeetingChange } = useMeetingsRealtime();
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -39,12 +43,23 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
     void load();
   }, [load]);
 
-  // Keep polling while the meeting is still being captured/transcribed.
+  // Refetch on each (re)connect (catches anything missed while offline). `load` refetches both
+  // the meeting and its transcript, so a status→ready transition pulls the transcript in.
   useEffect(() => {
-    if (!meeting || !isInFlight(meeting.status)) return;
-    const timer = setInterval(() => void load(), 5000);
-    return () => clearInterval(timer);
-  }, [meeting?.status, load]);
+    if (connectionEpoch > 0) void load();
+  }, [connectionEpoch, load]);
+
+  // Live updates: a meeting broadcast → debounced REST refetch (no polling).
+  useEffect(() => {
+    const unsub = onMeetingChange(() => {
+      if (debounce.current) clearTimeout(debounce.current);
+      debounce.current = setTimeout(() => void load(), 300);
+    });
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+      unsub();
+    };
+  }, [onMeetingChange, load]);
 
   if (loading) return <WorkspaceSkeleton />;
 
@@ -86,6 +101,7 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
             {meeting.title || "Untitled meeting"}
           </h1>
           <StatusChip status={meeting.status} />
+          <ConnectionBadge />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5">

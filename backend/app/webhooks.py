@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
@@ -24,6 +25,7 @@ from app.services.transcription import (
 )
 
 router = APIRouter()
+log = logging.getLogger("noteflow.webhooks")
 
 
 def _extract_bot_id(body: dict) -> str | None:
@@ -41,10 +43,17 @@ def _extract_status_code(body: dict) -> str | None:
 
 
 def _extract_recording_id(body: dict) -> str | None:
-    """The RECORDING id (never the bot id)."""
+    """The RECORDING id (never the bot id). Checks the documented shapes + one level of nesting."""
     data = body.get("data") or {}
     rec = data.get("recording") if isinstance(data.get("recording"), dict) else {}
-    return (rec or {}).get("id") or data.get("recording_id")
+    inner = data.get("data") if isinstance(data.get("data"), dict) else {}
+    inner_rec = inner.get("recording") if isinstance(inner.get("recording"), dict) else {}
+    return (
+        (rec or {}).get("id")
+        or data.get("recording_id")
+        or (inner_rec or {}).get("id")
+        or inner.get("recording_id")
+    )
 
 
 def _extract_transcript_id(body: dict) -> str | None:
@@ -89,14 +98,16 @@ def _apply_recording_times(meeting: Meeting, body: dict) -> None:
 
 def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None) -> None:
     """Map a Recall event onto the owning meeting; drive Phase 4 transcription idempotently."""
+    event_type = (body.get("event") or "").lower()
     bot_id = _extract_bot_id(body)
     if not bot_id:
+        log.warning("recall event=%s has no bot id; data keys=%s", event_type, list((body.get("data") or {}).keys()))
         return
     meeting = db.query(Meeting).filter(Meeting.recall_bot_id == bot_id).first()
     if meeting is None:
+        log.warning("recall event=%s bot_id=%s matched no meeting", event_type, bot_id)
         return
-
-    event_type = (body.get("event") or "").lower()
+    log.info("recall event=%s meeting_id=%s status=%s", event_type, meeting.id, meeting.status)
     code = _extract_status_code(body)
     mapped = map_bot_status(code) if code else None
     if mapped:
@@ -104,20 +115,35 @@ def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None)
 
     if event_type in ("recording.done", "bot.recording_done", "recording_done"):
         recording_id = _extract_recording_id(body)
-        if recording_id and not meeting.recall_recording_id:
+        if not recording_id:
+            data = body.get("data") or {}
+            rec = data.get("recording") if isinstance(data.get("recording"), dict) else {}
+            log.warning(
+                "recording.done meeting_id=%s: could not extract recording id; data keys=%s recording keys=%s",
+                meeting.id, list(data.keys()), list((rec or {}).keys()),
+            )
+        elif not meeting.recall_recording_id:
             meeting.recall_recording_id = recording_id
         _apply_recording_times(meeting, body)
         meeting.status = "transcribing"
         db.commit()
         # Kick off the async transcript creation once, idempotently.
-        if meeting.recall_recording_id and enqueue_job(db, meeting.id, "create_transcript"):
-            if background_tasks is not None:
+        if meeting.recall_recording_id:
+            created = enqueue_job(db, meeting.id, "create_transcript")
+            log.info(
+                "recording.done meeting_id=%s recording_id=%s create_transcript enqueued=%s",
+                meeting.id, meeting.recall_recording_id, created,
+            )
+            if created and background_tasks is not None:
                 background_tasks.add_task(run_create_transcript, meeting.id)
+        else:
+            log.error("recording.done meeting_id=%s: no recording id -> create_transcript NOT started", meeting.id)
         return
 
     if event_type in ("transcript.processing", "transcript_processing"):
         meeting.status = "transcribing"
         db.commit()
+        log.info("transcript.processing meeting_id=%s", meeting.id)
         return
 
     if event_type in ("transcript.done", "transcript_done"):
@@ -125,10 +151,15 @@ def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None)
         if transcript_id and not meeting.recall_transcript_id:
             meeting.recall_transcript_id = transcript_id
         db.commit()
-        # Download + normalize + persist segments off the request path, once.
-        if meeting.recall_transcript_id and enqueue_job(db, meeting.id, "process_transcript"):
-            if background_tasks is not None:
+        created = False
+        if meeting.recall_transcript_id:
+            created = enqueue_job(db, meeting.id, "process_transcript")
+            if created and background_tasks is not None:
                 background_tasks.add_task(run_process_transcript, meeting.id)
+        log.info(
+            "transcript.done meeting_id=%s transcript_id=%s process enqueued=%s",
+            meeting.id, meeting.recall_transcript_id, created,
+        )
         return
 
     if event_type in ("transcript.failed", "transcript_failed"):
@@ -137,6 +168,7 @@ def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None)
         data = body.get("data") or {}
         meeting.processing_error_message = str(data.get("error") or "Transcription failed at Recall/AssemblyAI.")[:2000]
         db.commit()
+        log.warning("transcript.failed meeting_id=%s", meeting.id)
         return
 
     db.commit()
