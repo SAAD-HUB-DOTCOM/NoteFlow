@@ -10,13 +10,18 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import Meeting, WebhookEvent
 from app.services.recall import map_bot_status, verify_webhook_signature, webhook_event_id
+from app.services.transcription import (
+    enqueue_job,
+    run_create_transcript,
+    run_process_transcript,
+)
 
 router = APIRouter()
 
@@ -35,8 +40,55 @@ def _extract_status_code(body: dict) -> str | None:
     return st if isinstance(st, str) else None
 
 
-def apply_event(db, body: dict) -> None:
-    """Map a Recall event onto the owning meeting's normalized status."""
+def _extract_recording_id(body: dict) -> str | None:
+    """The RECORDING id (never the bot id)."""
+    data = body.get("data") or {}
+    rec = data.get("recording") if isinstance(data.get("recording"), dict) else {}
+    return (rec or {}).get("id") or data.get("recording_id")
+
+
+def _extract_transcript_id(body: dict) -> str | None:
+    data = body.get("data") or {}
+    tr = data.get("transcript") if isinstance(data.get("transcript"), dict) else {}
+    return (tr or {}).get("id") or data.get("transcript_id")
+
+
+def _parse_dt(value) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _apply_recording_times(meeting: Meeting, body: dict) -> None:
+    """Best-effort populate started_at/ended_at/duration from the recording.done payload.
+
+    Only sets fields that are present + parseable and not already set — smallest safe fix, no new
+    webhooks or scope. Field names are defensive pending confirmation against the real payload.
+    """
+    data = body.get("data") or {}
+    rec = data.get("recording") if isinstance(data.get("recording"), dict) else {}
+    started = _parse_dt(rec.get("started_at") or rec.get("start_time"))
+    ended = _parse_dt(rec.get("completed_at") or rec.get("ended_at") or rec.get("end_time"))
+    if started and not meeting.started_at:
+        meeting.started_at = started
+    if ended and not meeting.ended_at:
+        meeting.ended_at = ended
+    if meeting.duration_seconds is None:
+        dur = rec.get("duration") or rec.get("duration_seconds")
+        try:
+            if dur is not None:
+                meeting.duration_seconds = int(float(dur))
+        except (TypeError, ValueError):
+            pass
+        if meeting.duration_seconds is None and meeting.started_at and meeting.ended_at:
+            meeting.duration_seconds = int((meeting.ended_at - meeting.started_at).total_seconds())
+
+
+def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None) -> None:
+    """Map a Recall event onto the owning meeting; drive Phase 4 transcription idempotently."""
     bot_id = _extract_bot_id(body)
     if not bot_id:
         return
@@ -50,17 +102,48 @@ def apply_event(db, body: dict) -> None:
     if mapped:
         meeting.status = mapped
 
-    # Lifecycle events that kick off async processing (worker wiring lands in Phase 4).
     if event_type in ("recording.done", "bot.recording_done", "recording_done"):
+        recording_id = _extract_recording_id(body)
+        if recording_id and not meeting.recall_recording_id:
+            meeting.recall_recording_id = recording_id
+        _apply_recording_times(meeting, body)
         meeting.status = "transcribing"
-    elif event_type in ("transcript.done", "transcript_done"):
-        meeting.status = "generating_intelligence"
+        db.commit()
+        # Kick off the async transcript creation once, idempotently.
+        if meeting.recall_recording_id and enqueue_job(db, meeting.id, "create_transcript"):
+            if background_tasks is not None:
+                background_tasks.add_task(run_create_transcript, meeting.id)
+        return
+
+    if event_type in ("transcript.processing", "transcript_processing"):
+        meeting.status = "transcribing"
+        db.commit()
+        return
+
+    if event_type in ("transcript.done", "transcript_done"):
+        transcript_id = _extract_transcript_id(body)
+        if transcript_id and not meeting.recall_transcript_id:
+            meeting.recall_transcript_id = transcript_id
+        db.commit()
+        # Download + normalize + persist segments off the request path, once.
+        if meeting.recall_transcript_id and enqueue_job(db, meeting.id, "process_transcript"):
+            if background_tasks is not None:
+                background_tasks.add_task(run_process_transcript, meeting.id)
+        return
+
+    if event_type in ("transcript.failed", "transcript_failed"):
+        meeting.status = "failed"
+        meeting.processing_error_code = "transcript_failed"
+        data = body.get("data") or {}
+        meeting.processing_error_message = str(data.get("error") or "Transcription failed at Recall/AssemblyAI.")[:2000]
+        db.commit()
+        return
 
     db.commit()
 
 
 @router.post("/webhooks/recall")
-async def recall_webhook(request: Request) -> Response:
+async def recall_webhook(request: Request, background_tasks: BackgroundTasks) -> Response:
     settings = get_settings()
     raw = await request.body()
 
@@ -104,7 +187,7 @@ async def recall_webhook(request: Request) -> Response:
             db.rollback()  # concurrent duplicate
             return Response(status_code=status.HTTP_200_OK)
 
-        apply_event(db, body)
+        apply_event(db, body, background_tasks)
         evt.status = "processed"
         evt.processed_at = datetime.now(timezone.utc)
         db.commit()

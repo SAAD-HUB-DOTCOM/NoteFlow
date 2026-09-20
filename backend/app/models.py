@@ -7,7 +7,17 @@ uses a real status lifecycle string (§6), never a boolean.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -69,11 +79,19 @@ class Meeting(TimestampMixin, Base):
     processing_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
+    transcript_segments: Mapped[list["TranscriptSegment"]] = relationship(
+        back_populates="meeting", cascade="all, delete-orphan"
+    )
 
 
 class Job(TimestampMixin, Base):
-    """Async work tracked for observability (FastAPI BackgroundTasks execute these tonight)."""
+    """Async work tracked for observability (FastAPI BackgroundTasks execute these tonight).
+
+    Unique (meeting_id, type): at most one job of a kind per meeting — the idempotency guard so
+    duplicate webhook deliveries can't start duplicate transcript work.
+    """
     __tablename__ = "jobs"
+    __table_args__ = (UniqueConstraint("meeting_id", "type", name="uq_job_meeting_type"),)
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     meeting_id: Mapped[str | None] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=True)
     type: Mapped[str] = mapped_column(String)  # e.g. create_final_transcript, generate_intelligence
@@ -82,6 +100,32 @@ class Job(TimestampMixin, Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     meeting: Mapped["Meeting | None"] = relationship(back_populates="jobs")
+
+
+class TranscriptSegment(TimestampMixin, Base):
+    """A normalized diarized transcript line (Phase 4).
+
+    Times are milliseconds from the recording origin (source native); the API converts to
+    seconds for the frontend's seekTo. Unique (meeting_id, sequence) makes segment persistence
+    idempotent — a re-run can't create duplicate rows.
+    """
+    __tablename__ = "transcript_segments"
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "sequence", name="uq_segment_meeting_sequence"),
+        Index("ix_segment_meeting_sequence", "meeting_id", "sequence"),
+    )
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    meeting_id: Mapped[str] = mapped_column(
+        ForeignKey("meetings.id", ondelete="CASCADE"), index=True
+    )
+    speaker_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    text: Mapped[str] = mapped_column(Text)
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    sequence: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. assembly_ai_async
+
+    meeting: Mapped["Meeting"] = relationship(back_populates="transcript_segments")
 
 
 class WebhookEvent(TimestampMixin, Base):

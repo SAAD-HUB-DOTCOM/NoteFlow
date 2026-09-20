@@ -5,15 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import Meeting, Profile, UserPreferences
+from app.models import Meeting, Profile, TranscriptSegment, UserPreferences
 from app.schemas import (
     CaptureIn,
     HealthOut,
     MeetingOut,
+    MeetingTranscriptOut,
     MeOut,
     MeUpdate,
     PreferencesOut,
     PreferencesUpdate,
+    TranscriptSegmentOut,
 )
 from app.security import CurrentUser, get_current_user
 from app.services.recall import (
@@ -209,3 +211,37 @@ def get_meeting(
     if meeting is None or meeting.owner_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
     return meeting
+
+
+@router.get(
+    "/meetings/{meeting_id}/transcript",
+    response_model=MeetingTranscriptOut,
+    tags=["meetings"],
+)
+def get_meeting_transcript(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeetingTranscriptOut:
+    """The real, persisted transcript for a meeting (owner-scoped). Empty until processing lands."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    rows = (
+        db.query(TranscriptSegment)
+        .filter(TranscriptSegment.meeting_id == meeting_id)
+        .order_by(TranscriptSegment.sequence)
+        .all()
+    )
+    segments = [
+        TranscriptSegmentOut(
+            id=r.id,
+            speaker=r.speaker_label,
+            text=r.text,
+            start=r.start_ms / 1000.0,
+            end=r.end_ms / 1000.0,
+            sequence=r.sequence,
+        )
+        for r in rows
+    ]
+    return MeetingTranscriptOut(meeting_id=meeting.id, status=meeting.status, segments=segments)

@@ -57,3 +57,18 @@ class MeetingOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class TranscriptSegmentOut(BaseModel):
+    id: str
+    speaker: str | None
+    text: str
+    start: float  # seconds (for the frontend seekTo primitive)
+    end: float
+    sequence: int
+
+
+class MeetingTranscriptOut(BaseModel):
+    meeting_id: str
+    status: str
+    segments: list[TranscriptSegmentOut]
+

@@ -41,6 +41,45 @@ class RecallService:
             resp.raise_for_status()
             return resp.json()
 
+    def create_transcript(self, recording_id: str) -> dict:
+        """Start an async AssemblyAI transcript for a recording (Phase 4).
+
+        The AssemblyAI credential lives in the Recall workspace (Tokyo); we only select the
+        provider + diarization here. Endpoint:
+        POST /recording/{recording_id}/create_transcript/
+        """
+        body = {
+            "provider": {
+                "assembly_ai_async": {
+                    "speaker_labels": True,  # diarization / speaker identity
+                }
+            }
+        }
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(
+                f"{self.base_url}/recording/{recording_id}/create_transcript/",
+                json=body,
+                headers=self._headers(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    def get_transcript(self, transcript_id: str) -> dict:
+        """Fetch the Recall transcript object (contains data.download_url when ready)."""
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{self.base_url}/transcript/{transcript_id}/", headers=self._headers()
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    def download_transcript(self, download_url: str):
+        """Download the transcript artifact from its (presigned) download URL — no auth header."""
+        with httpx.Client(timeout=120, follow_redirects=True) as client:
+            resp = client.get(download_url)
+            resp.raise_for_status()
+            return resp.json()
+
 
 def get_recall_service(api_key: str | None, region: str) -> RecallService:
     if not api_key:
