@@ -74,6 +74,25 @@ def test_normalize_transcript_shapes():
     assert segs[1]["start_ms"] == 1500 and segs[1]["end_ms"] == 2000 and segs[1]["sequence"] == 1
 
 
+def test_normalize_real_participant_shape_and_splitting():
+    """Real Recall async shape: participant.name + words[]. Speaker must be the participant name,
+    and a long turn must split into multiple readable timestamped lines."""
+    words = []
+    t = 0.0
+    # 3 sentences, each 8 words ending in a period -> should yield 3 segments.
+    for s in range(3):
+        for i in range(8):
+            w = "word" + (".") * (1 if i == 7 else 0)
+            words.append({"text": w, "start_timestamp": {"relative": t}, "end_timestamp": {"relative": t + 0.4}})
+            t += 0.5
+    artifact = [{"participant": {"id": 100, "name": "Saad ullah", "is_host": True}, "words": words}]
+    segs = normalize_transcript(artifact)
+    assert len(segs) == 3
+    assert all(s["speaker_label"] == "Saad ullah" for s in segs)
+    assert segs[0]["sequence"] == 0 and segs[2]["sequence"] == 2
+    assert segs[0]["start_ms"] == 0
+
+
 def test_normalize_handles_wrapped_and_empty():
     assert normalize_transcript({"transcript": RECALL_TRANSCRIPT})  # wrapped list
     assert normalize_transcript({}) == []

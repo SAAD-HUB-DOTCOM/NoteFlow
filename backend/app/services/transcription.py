@@ -46,11 +46,58 @@ def _word_time_seconds(obj: dict, key: str) -> float | None:
     return None
 
 
-def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
-    """Turn a Recall transcript artifact into ordered segment dicts.
+# Split a speaker's word stream into readable, timestamped lines.
+_MAX_WORDS = 45
+_MAX_SPAN_S = 18.0
+_MIN_SENTENCE_WORDS = 6
 
-    Handles the common Recall shape (list of {speaker, words:[{text,start_timestamp,end_timestamp}]})
-    and simpler {speaker, text, start, end} entries. Returns [] if nothing parseable.
+
+def _entry_speaker(entry: dict) -> str | None:
+    """Real Recall shape carries `participant.name`; older/simpler shapes use `speaker`."""
+    part = entry.get("participant")
+    if isinstance(part, dict):
+        name = part.get("name")
+        if name:
+            return str(name)
+        if part.get("id") is not None:
+            return f"Speaker {part['id']}"
+    speaker = entry.get("speaker", entry.get("speaker_label"))
+    if isinstance(speaker, int):
+        return f"Speaker {speaker}"
+    return str(speaker) if speaker not in (None, "") else None
+
+
+def _chunk_words(words: list) -> list[tuple[str, float, float]]:
+    """Group a participant's words into natural lines (sentence-ish, capped by words/duration)."""
+    chunks: list[tuple[str, float, float]] = []
+    cur: list[tuple[str, float, float]] = []
+    for w in words:
+        if not isinstance(w, dict):
+            continue
+        txt = (w.get("text") or "").strip()
+        if not txt:
+            continue
+        start = _word_time_seconds(w, "start")
+        end = _word_time_seconds(w, "end")
+        start = start if start is not None else (cur[-1][2] if cur else 0.0)
+        end = end if end is not None else start
+        cur.append((txt, start, end))
+        span = cur[-1][2] - cur[0][1]
+        ends_sentence = txt[-1] in ".?!"
+        if (ends_sentence and len(cur) >= _MIN_SENTENCE_WORDS) or len(cur) >= _MAX_WORDS or span >= _MAX_SPAN_S:
+            chunks.append((" ".join(t for t, _, _ in cur).strip(), cur[0][1], cur[-1][2]))
+            cur = []
+    if cur:
+        chunks.append((" ".join(t for t, _, _ in cur).strip(), cur[0][1], cur[-1][2]))
+    return chunks
+
+
+def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
+    """Turn a Recall transcript artifact into ordered, readable segment dicts.
+
+    Real Recall async shape: a list of {participant:{name,...}, words:[{text,start_timestamp,
+    end_timestamp}]} — one entry per speaker turn. We split each turn into short timestamped lines
+    (better reading + seek granularity). Also handles {speaker,text,start,end} entries. [] if empty.
     """
     entries = payload
     if isinstance(payload, dict):
@@ -67,38 +114,33 @@ def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
     for entry in entries:
         if not isinstance(entry, dict):
             continue
-        speaker = entry.get("speaker", entry.get("speaker_label"))
-        if isinstance(speaker, int):
-            speaker = f"Speaker {speaker}"
-        speaker_label = str(speaker) if speaker not in (None, "") else None
-
+        speaker_label = _entry_speaker(entry)
         words = entry.get("words")
+
         if isinstance(words, list) and words:
-            text = " ".join(
-                (w.get("text") or "").strip() for w in words if isinstance(w, dict)
-            ).strip()
-            starts = [t for t in (_word_time_seconds(w, "start") for w in words if isinstance(w, dict)) if t is not None]
-            ends = [t for t in (_word_time_seconds(w, "end") for w in words if isinstance(w, dict)) if t is not None]
-            start_s = min(starts) if starts else 0.0
-            end_s = max(ends) if ends else start_s
+            lines = _chunk_words(words)
         else:
             text = (entry.get("text") or "").strip()
+            if not text:
+                continue
             start_s = _word_time_seconds(entry, "start") or 0.0
             end_s = _word_time_seconds(entry, "end") or start_s
+            lines = [(text, start_s, end_s)]
 
-        if not text:
-            continue
-        segments.append(
-            {
-                "speaker_label": speaker_label,
-                "text": text,
-                "start_ms": int(round(start_s * 1000)),
-                "end_ms": int(round(end_s * 1000)),
-                "sequence": seq,
-                "source": source,
-            }
-        )
-        seq += 1
+        for text, start_s, end_s in lines:
+            if not text:
+                continue
+            segments.append(
+                {
+                    "speaker_label": speaker_label,
+                    "text": text,
+                    "start_ms": int(round(start_s * 1000)),
+                    "end_ms": int(round(end_s * 1000)),
+                    "sequence": seq,
+                    "source": source,
+                }
+            )
+            seq += 1
     return segments
 
 
@@ -252,7 +294,14 @@ def run_process_transcript(meeting_id: str) -> None:
             payload = recall.download_transcript(download_url)
             segments = normalize_transcript(payload)
             if not segments:
-                raise RuntimeError("No transcript segments parsed from artifact")
+                # Artifact downloaded fine but has no speech — truthful empty transcript, not failure.
+                meeting.status = "ready"
+                if job:
+                    job.status = "succeeded"
+                    job.error = None
+                db.commit()
+                log.info("process_transcript meeting_id=%s: transcript empty (no speech) -> ready", meeting_id)
+                return
 
             for seg in segments:
                 db.add(TranscriptSegment(meeting_id=meeting_id, **seg))
