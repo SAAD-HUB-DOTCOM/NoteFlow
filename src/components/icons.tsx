@@ -185,6 +185,15 @@ export function ShareIcon(props: IconProps) {
   );
 }
 
+export function LockIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+      <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    </Icon>
+  );
+}
+
 export function LayersIcon(props: IconProps) {
   return (
     <Icon {...props}>

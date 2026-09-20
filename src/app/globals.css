@@ -45,6 +45,64 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Cosmic marketing surface (/product) — starfield, nebula glow, twinkle, marquee.
+   Scoped utilities so they never leak into the app's calmer Operate screens.
+--------------------------------------------------------------------------- */
+
+/* Nebula glow: a soft radial wash placed behind cosmic sections and cards. */
+.nebula {
+  background: radial-gradient(
+    closest-side,
+    var(--nebula-color, rgba(108, 92, 231, 0.55)),
+    transparent 72%
+  );
+  filter: blur(8px);
+}
+
+/* Twinkle for a subset of stars — opacity only, so it stays cheap and calm. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+/* Integrations marquee — a single slow, continuous drift (one authored motion). */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee 32s linear infinite;
+}
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+}
+
 /* "Now playing" equalizer on the active transcript line. */
 @keyframes eq {
   0%,
@@ -72,5 +130,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* Freeze the marquee in a readable position when motion is reduced. */
+  .marquee-track {
+    transform: none !important;
   }
 }
