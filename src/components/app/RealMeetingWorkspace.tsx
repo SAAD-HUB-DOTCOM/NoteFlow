@@ -11,6 +11,7 @@ import { ConnectionBadge } from "@/components/app/ConnectionBadge";
 import { MeetingInsights } from "@/components/app/MeetingInsights";
 import { MeetingAsk } from "@/components/app/MeetingAsk";
 import { RecordingPlayer, type RecordingPlayerHandle } from "@/components/app/RecordingPlayer";
+import { ShareControl } from "@/components/app/ShareControl";
 import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { CalendarIcon, ChevronRightIcon, ClockIcon, MicIcon, UsersIcon } from "@/components/icons";
 
@@ -116,6 +117,9 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
           </h1>
           <StatusChip status={meeting.status} />
           <ConnectionBadge />
+          <div className="ml-auto">
+            <ShareControl meetingId={meeting.id} initialShareId={meeting.share_id} />
+          </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5">

@@ -1,4 +1,6 @@
 """API v1 routes — Phase 1 (health, me, preferences). Capture/webhooks land in Phase 3."""
+import secrets
+
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,12 +14,15 @@ from app.models import (
     TranscriptSegment,
     UserPreferences,
 )
+from app.services.aggregates import list_action_items, list_highlights
 from app.schemas import (
+    ActionItemOut,
     AskAllOut,
     AskIn,
     AskOut,
     CaptureIn,
     HealthOut,
+    HighlightOut,
     MeetingIntelligenceOut,
     MeetingOut,
     MeetingTranscriptOut,
@@ -26,6 +31,8 @@ from app.schemas import (
     PreferencesOut,
     PreferencesUpdate,
     RecordingOut,
+    ShareOut,
+    SharedMeetingOut,
     TranscriptSegmentOut,
 )
 from app.security import CurrentUser, get_current_user
@@ -249,6 +256,99 @@ def ask_all_meetings(
             detail="Couldn't reach the answer service. Try again in a moment.",
         )
     return AskAllOut(**result)
+
+
+@router.get("/action-items", response_model=list[ActionItemOut], tags=["meetings"])
+def get_action_items(
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Every action item NoteFlow extracted across the user's meetings (owner-scoped, real data)."""
+    return list_action_items(db, user.id)
+
+
+@router.get("/highlights", response_model=list[HighlightOut], tags=["meetings"])
+def get_highlights(
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Key moments NoteFlow auto-detected across the user's meetings (owner-scoped, real data)."""
+    return list_highlights(db, user.id)
+
+
+@router.post("/meetings/{meeting_id}/share", response_model=ShareOut, tags=["meetings"])
+def share_meeting(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ShareOut:
+    """Create (or return) a public, read-only share link for a meeting (owner-scoped).
+
+    Mints an unguessable token; the token is the only thing needed to read the meeting publicly, so
+    treat the link as a capability. Idempotent — re-sharing returns the existing token.
+    """
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    if not meeting.share_id:
+        meeting.share_id = secrets.token_urlsafe(16)
+        db.commit()
+    return ShareOut(meeting_id=meeting.id, share_id=meeting.share_id)
+
+
+@router.delete("/meetings/{meeting_id}/share", response_model=ShareOut, tags=["meetings"])
+def unshare_meeting(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ShareOut:
+    """Revoke a meeting's public share link (owner-scoped). The old link stops working immediately."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    meeting.share_id = None
+    db.commit()
+    return ShareOut(meeting_id=meeting.id, share_id=None)
+
+
+@router.get("/shared/{share_id}", response_model=SharedMeetingOut, tags=["public"])
+def get_shared_meeting(
+    share_id: str,
+    db: Session = Depends(get_db),
+) -> SharedMeetingOut:
+    """PUBLIC read-only view of a shared meeting — no authentication.
+
+    Looked up only by the unguessable share token; revoked meetings (share_id cleared) 404. Never
+    exposes the owner's identity, the meeting URL, or any account data.
+    """
+    meeting = db.query(Meeting).filter(Meeting.share_id == share_id).first()
+    if meeting is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This shared link isn’t available.")
+    rows = (
+        db.query(TranscriptSegment)
+        .filter(TranscriptSegment.meeting_id == meeting.id)
+        .order_by(TranscriptSegment.sequence)
+        .all()
+    )
+    segments = [
+        TranscriptSegmentOut(
+            id=r.id,
+            speaker=r.speaker_label,
+            text=r.text,
+            start=r.start_ms / 1000.0,
+            end=r.end_ms / 1000.0,
+            sequence=r.sequence,
+        )
+        for r in rows
+    ]
+    intel = db.get(MeetingIntelligence, meeting.id)
+    return SharedMeetingOut(
+        title=meeting.title,
+        started_at=meeting.started_at,
+        duration_seconds=meeting.duration_seconds,
+        segments=segments,
+        intelligence=intel.content if intel else None,
+    )
 
 
 @router.get("/meetings/{meeting_id}", response_model=MeetingOut, tags=["meetings"])

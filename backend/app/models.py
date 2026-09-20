@@ -78,6 +78,8 @@ class Meeting(TimestampMixin, Base):
     recall_transcript_id: Mapped[str | None] = mapped_column(String, nullable=True)
     processing_error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     processing_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Public share: an unguessable token; null = not shared. Set when the owner shares a meeting.
+    share_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
     transcript_segments: Mapped[list["TranscriptSegment"]] = relationship(

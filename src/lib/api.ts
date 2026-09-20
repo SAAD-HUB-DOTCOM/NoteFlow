@@ -55,6 +55,56 @@ export interface MeetingDTO {
   started_at: string | null;
   duration_seconds: number | null;
   created_at: string;
+  share_id: string | null;
+}
+
+export interface ActionItemDTO {
+  text: string;
+  owner: string | null;
+  meeting_id: string;
+  meeting_title: string;
+  meeting_date: string;
+  segment_id: string | null;
+  start: number | null;
+}
+
+export interface HighlightDTO {
+  title: string;
+  meeting_id: string;
+  meeting_title: string;
+  meeting_date: string;
+  segment_id: string | null;
+  start: number | null;
+}
+
+export interface ShareDTO {
+  meeting_id: string;
+  share_id: string | null;
+}
+
+export interface SharedMeetingDTO {
+  title: string | null;
+  started_at: string | null;
+  duration_seconds: number | null;
+  segments: TranscriptSegmentDTO[];
+  intelligence: IntelligenceContent | null;
+}
+
+/** Public fetch (no auth) for shared read-only views. */
+export async function publicFetch<T>(path: string): Promise<T> {
+  if (!BASE) throw new ApiError(0, "The NoteFlow backend URL isn’t configured yet.");
+  const res = await fetch(`${BASE}${path}`);
+  if (!res.ok) {
+    let detail = `Request failed (${res.status}).`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  return (await res.json()) as T;
 }
 
 export interface TranscriptSegmentDTO {

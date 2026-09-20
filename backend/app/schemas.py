@@ -54,8 +54,33 @@ class MeetingOut(BaseModel):
     started_at: datetime | None
     duration_seconds: int | None
     created_at: datetime
+    share_id: str | None = None  # public share token; null = not shared
 
     model_config = {"from_attributes": True}
+
+
+class ActionItemOut(BaseModel):
+    text: str
+    owner: str | None = None
+    meeting_id: str
+    meeting_title: str
+    meeting_date: datetime
+    segment_id: str | None = None
+    start: float | None = None  # seconds
+
+
+class HighlightOut(BaseModel):
+    title: str
+    meeting_id: str
+    meeting_title: str
+    meeting_date: datetime
+    segment_id: str | None = None
+    start: float | None = None  # seconds
+
+
+class ShareOut(BaseModel):
+    meeting_id: str
+    share_id: str | None  # null after revoke
 
 
 class TranscriptSegmentOut(BaseModel):
@@ -71,6 +96,15 @@ class MeetingTranscriptOut(BaseModel):
     meeting_id: str
     status: str
     segments: list[TranscriptSegmentOut]
+
+
+class SharedMeetingOut(BaseModel):
+    """Public, read-only view of a shared meeting (no auth). Owner identity is never exposed."""
+    title: str | None
+    started_at: datetime | None
+    duration_seconds: int | None
+    segments: list[TranscriptSegmentOut]
+    intelligence: dict | None = None
 
 
 class AskIn(BaseModel):
