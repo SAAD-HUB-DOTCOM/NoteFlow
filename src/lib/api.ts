@@ -56,3 +56,18 @@ export interface MeetingDTO {
   duration_seconds: number | null;
   created_at: string;
 }
+
+export interface TranscriptSegmentDTO {
+  id: string;
+  speaker: string | null;
+  text: string;
+  start: number; // seconds
+  end: number; // seconds
+  sequence: number;
+}
+
+export interface TranscriptDTO {
+  meeting_id: string;
+  status: string;
+  segments: TranscriptSegmentDTO[];
+}
