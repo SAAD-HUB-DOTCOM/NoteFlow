@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { CloseIcon } from "@/components/icons";
@@ -19,10 +19,26 @@ const LINKS = [
  */
 export function LandingNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Transparent over the cosmic hero at the top; a frosted bar as soon as the page scrolls, so
+  // content slides beneath frosted glass instead of a see-through bar.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="sticky top-0 z-50">
-      <header className="border-b border-border/50 bg-background/70 backdrop-blur-md">
+      <header
+        className={`transition-colors duration-300 ${
+          scrolled
+            ? "border-b border-border/50 bg-background/80 backdrop-blur-md"
+            : "border-b border-transparent bg-transparent"
+        }`}
+      >
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/product" className="rounded-lg" aria-label="NoteFlow home">
             <Logo />

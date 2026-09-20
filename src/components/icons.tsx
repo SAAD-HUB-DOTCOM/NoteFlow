@@ -185,6 +185,27 @@ export function ShareIcon(props: IconProps) {
   );
 }
 
+export function SettingsIcon(props: IconProps) {
+  // Sliders read unambiguously as "settings" (a rayed gear looks like a sun at small sizes).
+  return (
+    <Icon {...props}>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+    </Icon>
+  );
+}
+
+export function HelpIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 4" />
+      <path d="M12 17.5v.01" />
+    </Icon>
+  );
+}
+
 export function LockIcon(props: IconProps) {
   return (
     <Icon {...props}>

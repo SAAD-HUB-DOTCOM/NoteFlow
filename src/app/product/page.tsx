@@ -5,6 +5,7 @@ import { LandingNav } from "@/components/landing/LandingNav";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { AppPreview } from "@/components/landing/AppPreview";
 import { Starfield } from "@/components/landing/Starfield";
+import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
 import { LockIcon } from "@/components/icons";
 
@@ -39,8 +40,11 @@ export default function ProductPage() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative -mt-16 flex min-h-[100dvh] flex-col justify-center overflow-hidden pt-16">
       <Starfield />
+      {/* cinematic cosmic loop over the starfield; falls back to the still starfield when the
+          visitor prefers reduced motion. Sits behind the transparent nav so the two merge. */}
+      <HeroVideo />
       {/* two nebula glows anchor the composition — the only large light on the page */}
       <div
         aria-hidden="true"
@@ -53,7 +57,7 @@ function Hero() {
         style={{ ["--nebula-color" as string]: "rgba(0,217,192,0.18)" }}
       />
 
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[0.92fr_1.12fr] lg:items-center lg:gap-12 lg:pb-24 lg:pt-20">
+      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.12fr] lg:items-center lg:gap-12">
         {/* content on the left, the layered card cluster balanced to its right */}
         <div className="animate-rise-in">
           <h1 className="font-display text-[2.9rem] font-semibold leading-[1.02] tracking-[-0.045em] text-foreground sm:text-[4.2rem]">
@@ -91,7 +95,9 @@ function Hero() {
           </p>
         </div>
 
-        <div className="animate-rise-in [animation-delay:120ms]">
+        {/* the card cluster shows on desktop, where there's height for it; on phones/tablets the
+            hero stays a single clean screen of headline + CTA */}
+        <div className="hidden animate-rise-in [animation-delay:120ms] lg:block">
           <HeroVisual />
         </div>
       </div>
