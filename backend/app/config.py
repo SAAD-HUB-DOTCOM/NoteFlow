@@ -1,9 +1,3 @@
-"""Application settings loaded from environment (pydantic-settings).
-
-Secrets are Optional so the API boots for /health even before external services are
-configured; protected routes fail with a truthful "not configured" error rather than
-faking success (per note-flow.md §0).
-"""
 from functools import lru_cache
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 

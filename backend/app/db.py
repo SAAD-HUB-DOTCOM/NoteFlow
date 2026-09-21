@@ -1,4 +1,3 @@
-"""Database engine, session, and declarative base (SQLAlchemy 2.x, sync)."""
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine

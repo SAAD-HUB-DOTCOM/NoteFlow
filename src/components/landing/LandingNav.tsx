@@ -44,12 +44,12 @@ export function LandingNav() {
             <Logo />
           </Link>
 
-          <div className="hidden items-center gap-1 rounded-full border border-border/80 bg-surface/60 px-2 py-1.5 md:flex">
+          <div className="glass-pill hidden items-center gap-1 rounded-full px-2 py-1.5 md:flex">
             {LINKS.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-full px-3.5 py-1.5 font-display text-sm text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
+                className="rounded-full px-3.5 py-1.5 text-sm text-muted transition-colors hover:bg-white/5 hover:text-foreground"
               >
                 {l.label}
               </a>
@@ -65,9 +65,9 @@ export function LandingNav() {
             </Link>
             <Link
               href="/login"
-              className="rounded-full bg-primary px-4 py-2 font-display text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary-hover"
+              className="btn-grad px-4 py-2 text-sm font-semibold uppercase tracking-wide"
             >
-              Get started free
+              Sign up free
             </Link>
             <button
               type="button"

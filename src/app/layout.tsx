@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Sora } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+// One family for display + body (see DESIGN.md §1.2), self-hosted via next/font (no CDN).
+const sora = Sora({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-// Display voice for the cosmic marketing surface — a geometric grotesk with a
-// spacey character, self-hosted via next/font (no CDN). Body stays Inter.
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
+  variable: "--font-sora",
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
@@ -27,7 +20,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={sora.variable}>
       <body className="min-h-screen font-sans">{children}</body>
     </html>
   );

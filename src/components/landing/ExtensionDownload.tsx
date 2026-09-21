@@ -3,14 +3,21 @@
  * packaged .zip from /public — no sign-up wall — and states exactly what it is (browsers, version,
  * size) so nothing is overpromised. Pure CSS motion, so it stays a server component.
  */
-export function ExtensionDownload({ align = "start" }: { align?: "start" | "center" }) {
+export function ExtensionDownload({
+  align = "start",
+  compact = false,
+}: {
+  align?: "start" | "center";
+  /** Hide the trailing "one-click capture in …" line for a tighter, single-screen hero. */
+  compact?: boolean;
+}) {
   return (
     <div className={align === "center" ? "flex flex-col items-center" : "flex flex-col items-start"}>
       <a
         href="/noteflow-extension.zip"
         download
         aria-label="Download the NoteFlow browser extension as a .zip"
-        className="group relative inline-flex items-center gap-4 rounded-2xl bg-primary py-3.5 pl-4 pr-6 shadow-[0_18px_44px_-14px_rgba(108,92,231,0.7)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-[0_26px_60px_-16px_rgba(108,92,231,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group relative inline-flex items-center gap-4 rounded-2xl bg-primary py-3.5 pl-4 pr-6 shadow-[0_18px_44px_-14px_rgba(150,0,255,0.7)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-[0_26px_60px_-16px_rgba(150,0,255,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {/* teal spark in the corner — the accent hue, echoing the hero's second nebula */}
         <span
@@ -29,17 +36,19 @@ export function ExtensionDownload({ align = "start" }: { align?: "start" | "cent
           </span>
         </span>
       </a>
-      <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-        <span className="text-foreground/70">One-click capture in</span>
-        {["Google Meet", "Zoom", "Microsoft Teams"].map((p) => (
-          <span
-            key={p}
-            className="border-l border-border pl-3 first-of-type:border-l-0 first-of-type:pl-0"
-          >
-            {p}
-          </span>
-        ))}
-      </p>
+      {!compact && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <span className="text-foreground/70">One-click capture in</span>
+          {["Google Meet", "Zoom", "Microsoft Teams"].map((p) => (
+            <span
+              key={p}
+              className="border-l border-border pl-3 first-of-type:border-l-0 first-of-type:pl-0"
+            >
+              {p}
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   );
 }

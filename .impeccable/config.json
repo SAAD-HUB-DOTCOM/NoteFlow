@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/app/globals.css"
+        ],
+        "createdAt": "2026-09-21T09:44:18.170Z",
+        "reason": "DESIGN.md §1.2: clipped-gradient headline span is the pinned Fathom brand idiom (one emphasized clause per section, never body/metrics)"
+      }
+    ]
+  }
+}

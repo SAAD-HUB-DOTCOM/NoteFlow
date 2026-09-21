@@ -15,12 +15,12 @@ export function Logo({ className = "" }: { className?: string }) {
         aria-hidden="true"
         className="shrink-0"
       >
-        <rect width="28" height="28" rx="8" fill="#1A1A2E" stroke="#2D2D45" />
+        <rect width="28" height="28" rx="8" fill="#0E0E10" stroke="#2A2A2A" />
         {/* waveform bars rising left→right, resolving into the tall accent bar */}
-        <rect x="7" y="15" width="2.4" height="4" rx="1.2" fill="#6C5CE7" opacity="0.5" />
-        <rect x="11" y="11" width="2.4" height="8" rx="1.2" fill="#6C5CE7" opacity="0.75" />
-        <rect x="15" y="7" width="2.4" height="14" rx="1.2" fill="#6C5CE7" />
-        <rect x="19" y="12.5" width="2.4" height="5" rx="1.2" fill="#00D9C0" opacity="0.9" />
+        <rect x="7" y="15" width="2.4" height="4" rx="1.2" fill="#9600FF" opacity="0.5" />
+        <rect x="11" y="11" width="2.4" height="8" rx="1.2" fill="#9600FF" opacity="0.8" />
+        <rect x="15" y="7" width="2.4" height="14" rx="1.2" fill="#9600FF" />
+        <rect x="19" y="12.5" width="2.4" height="5" rx="1.2" fill="#00BEFF" opacity="0.9" />
       </svg>
       <span className="text-[1.075rem] font-semibold tracking-tight text-foreground">
         NoteFlow

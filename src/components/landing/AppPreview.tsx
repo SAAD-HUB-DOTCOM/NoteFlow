@@ -50,7 +50,7 @@ export function AppPreview() {
                 className="w-[3px] rounded-full"
                 style={{
                   height: `${h}%`,
-                  backgroundColor: i < 22 ? "#6C5CE7" : "#2D2D45",
+                  backgroundColor: i < 22 ? "#9600FF" : "#2A2A2A",
                 }}
               />
             ))}
@@ -68,7 +68,7 @@ export function AppPreview() {
             </div>
             <ul className="mt-2.5 space-y-2 text-[0.8rem] leading-relaxed text-foreground/90">
               <li>Dashboard UI ships Saturday; transcript view lands before Sunday.</li>
-              <li>Team aligned on the indigo dark theme for launch.</li>
+              <li>Team locked the dark launch theme in the first ten minutes.</li>
             </ul>
             <div className="mt-3.5 border-t border-border pt-3">
               <p className="text-xs font-medium text-muted">Action items</p>

@@ -17,13 +17,13 @@ export function HeroVisual() {
 
       {/* overlapping layered cluster on large screens */}
       <div className="relative hidden h-[470px] lg:block">
-        <Floating className="left-0 top-0 w-[262px] z-0 scale-[0.97]" glow="violet" delay="0s">
+        <Floating className="left-0 top-0 w-[262px] z-0 scale-[0.97]" glow="cyan" delay="0s">
           <CaptureCard variant="recede" />
         </Floating>
-        <Floating className="right-0 top-[7%] w-[312px] z-10" glow="indigo" delay="1.1s">
+        <Floating className="right-0 top-[7%] w-[312px] z-10" glow="pink" delay="1.1s">
           <AskCard variant="recede" />
         </Floating>
-        <Floating className="bottom-0 left-[13%] w-[356px] z-20" glow="teal" delay="0.5s">
+        <Floating className="bottom-0 left-[13%] w-[356px] z-20" glow="purple" delay="0.5s">
           <SummaryCard variant="focal" />
         </Floating>
       </div>
@@ -32,9 +32,9 @@ export function HeroVisual() {
 }
 
 const GLOWS: Record<string, string> = {
-  violet: "rgba(139,124,246,0.42)",
-  indigo: "rgba(108,92,231,0.5)",
-  teal: "rgba(0,217,192,0.3)",
+  purple: "rgba(150,0,255,0.42)",
+  pink: "rgba(255,168,187,0.30)",
+  cyan: "rgba(0,190,255,0.26)",
 };
 
 function Floating({
