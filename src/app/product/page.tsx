@@ -68,12 +68,15 @@ function Hero() {
           <h1 className="font-display text-[clamp(2.25rem,1.7rem+2.4vw,3.75rem)] font-semibold leading-[1.05] tracking-[-0.04em] text-foreground text-balance">
             <span className="font-normal">Focus on the conversation.</span>
             <span className="block">
-              NoteFlow <span className="text-gradient-brand">keeps the record.</span>
+              NoteFlow{" "}
+              <span className="text-gradient-brand">keeps the record.</span>
             </span>
           </h1>
           <p className="mt-5 max-w-md text-p-medium leading-relaxed text-muted">
             NoteFlow summarizes every call the moment you hang up.{" "}
-            <strong className="font-medium text-foreground">Now recording bot-free.</strong>
+            <strong className="font-medium text-foreground">
+              Now recording bot-free.
+            </strong>
           </p>
           <div className="mt-7">
             <ExtensionDownload compact />
@@ -119,13 +122,18 @@ function Marquee() {
   // One authored phrase, gradient-clipped keyword; a single slow continuous drift.
   const unit = Array.from({ length: 4 });
   return (
-    <section aria-hidden="true" className="relative overflow-hidden border-y border-border/60 py-8 sm:py-10">
+    <section
+      aria-hidden="true"
+      className="relative overflow-hidden border-y border-border/60 py-8 sm:py-10"
+    >
       <div className="marquee-mask overflow-hidden">
         <div className="marquee-track flex w-max items-center gap-10 sm:gap-14">
           {[...unit, ...unit].map((_, i) => (
             <div key={i} className="flex items-center gap-10 sm:gap-14">
               <span className="whitespace-nowrap font-display text-4xl font-normal tracking-[-0.03em] text-foreground/85 sm:text-6xl">
-                Turn <span className="font-semibold text-gradient-brand">talk</span> into action
+                Turn{" "}
+                <span className="font-semibold text-gradient-brand">talk</span>{" "}
+                into action
               </span>
               <Star4 className="h-4 w-4 shrink-0 text-brand-yellow sm:h-5 sm:w-5" />
             </div>
@@ -144,7 +152,9 @@ function AudienceSection() {
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
         <h2 className="mx-auto max-w-3xl text-center font-display text-h2 font-normal text-foreground text-balance">
           Whether it&apos;s one call or one thousand,{" "}
-          <span className="font-semibold">NoteFlow remembers every meeting</span>
+          <span className="font-semibold">
+            NoteFlow remembers every meeting
+          </span>
         </h2>
         <div className="mt-14">
           <TeamsTabs />
@@ -154,25 +164,11 @@ function AudienceSection() {
   );
 }
 
-/* ----------------------------------------------- 3 pillars (§2.10) -------- */
-
+// The pillars are a GSAP scroll-pinned switcher that owns its own section shell + heading
+// (DESIGN.md §2.10) — see components/landing/Pillars.tsx.
 function PillarsSection() {
-  return (
-    <section id="ask" className="relative scroll-mt-24 overflow-hidden border-t border-border/60">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-        <div className="mb-14 max-w-2xl">
-          <StarEyebrow hue="cyan">Everything a meeting should leave you with</StarEyebrow>
-          <h2 className="mt-4 font-display text-h2 font-normal text-foreground text-balance">
-            Three things every call should give back
-          </h2>
-        </div>
-        <Pillars />
-      </div>
-    </section>
-  );
+  return <Pillars />;
 }
-
-/* ----------------------------------------------- How it works (§2.12) ---- */
 
 function HowItWorksSection() {
   return (
@@ -184,8 +180,6 @@ function HowItWorksSection() {
     </section>
   );
 }
-
-/* ----------------------------------------------- Integrations (§2.13) ---- */
 
 function IntegrationsSection() {
   return (
@@ -203,8 +197,8 @@ function IntegrationsSection() {
           <IntegrationsConstellation />
         </div>
         <p className="mx-auto mt-14 max-w-xl text-center text-p-regular leading-relaxed text-muted">
-          NoteFlow records where your meetings already happen and sends the recap where your work
-          lives — no new habits to learn.
+          NoteFlow records where your meetings already happen and sends the
+          recap where your work lives — no new habits to learn.
         </p>
       </div>
     </section>
@@ -233,7 +227,10 @@ function Faq() {
     },
   ];
   return (
-    <section id="faq" className="relative scroll-mt-24 overflow-hidden border-t border-border/60">
+    <section
+      id="faq"
+      className="relative scroll-mt-24 overflow-hidden border-t border-border/60"
+    >
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 sm:py-24">
         <h2 className="text-center font-display text-h2 font-normal text-foreground text-balance">
           Questions, <span className="font-semibold">answered</span>
@@ -255,7 +252,9 @@ function Faq() {
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </summary>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{item.a}</p>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+                {item.a}
+              </p>
             </details>
           ))}
         </div>
@@ -273,13 +272,19 @@ function FinalCta() {
       <div
         aria-hidden="true"
         className="absolute inset-0"
-        style={{ background: "linear-gradient(120deg, #FFA8BB 0%, #F55200 40%, #9600FF 100%)" }}
+        style={{
+          background:
+            "linear-gradient(120deg, #FFA8BB 0%, #F55200 40%, #9600FF 100%)",
+        }}
       />
       {/* soft light scrim behind the copy so near-black text clears contrast on the darker end */}
       <div
         aria-hidden="true"
         className="absolute left-1/2 top-1/2 h-[26rem] w-[46rem] max-w-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(closest-side, rgba(255,245,235,0.55), transparent 75%)" }}
+        style={{
+          background:
+            "radial-gradient(closest-side, rgba(255,245,235,0.55), transparent 75%)",
+        }}
       />
       <div className="relative mx-auto max-w-3xl px-4 py-28 text-center sm:px-6 sm:py-36">
         <StarEyebrow hue="black" align="center">
@@ -296,8 +301,18 @@ function FinalCta() {
             className="inline-flex items-center gap-2 rounded-full bg-[#0E0E10] px-7 py-3.5 font-display text-sm font-semibold uppercase tracking-wide text-brand-yellow shadow-[0_18px_44px_-14px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out hover:-translate-y-0.5"
           >
             Get started — it&apos;s free
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m13 6 6 6-6 6" />
             </svg>
           </a>
           <Link
@@ -316,7 +331,10 @@ function FinalCta() {
 
 function SiteFooter() {
   const cols = [
-    { title: "Product", links: ["Features", "Ask NoteFlow", "For teams", "Pricing"] },
+    {
+      title: "Product",
+      links: ["Features", "Ask NoteFlow", "For teams", "Pricing"],
+    },
     { title: "Company", links: ["About", "Careers", "Blog", "Contact"] },
     { title: "Legal", links: ["Privacy", "Terms", "Security"] },
   ];
@@ -328,7 +346,8 @@ function SiteFooter() {
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-              AI notes for every meeting. Be present on the call; let NoteFlow keep the record.
+              AI notes for every meeting. Be present on the call; let NoteFlow
+              keep the record.
             </p>
             <Link
               href="/login"
@@ -340,7 +359,9 @@ function SiteFooter() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             {cols.map((c) => (
               <div key={c.title}>
-                <h3 className="font-display text-sm font-semibold text-foreground">{c.title}</h3>
+                <h3 className="font-display text-sm font-semibold text-foreground">
+                  {c.title}
+                </h3>
                 <ul className="mt-4 space-y-3">
                   {c.links.map((l) => (
                     <li key={l}>
@@ -355,8 +376,12 @@ function SiteFooter() {
           </div>
         </div>
         <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
-          <p className="text-xs text-muted">© {year} NoteFlow. All rights reserved.</p>
-          <p className="text-xs text-muted">Made for people who&apos;d rather be listening.</p>
+          <p className="text-xs text-muted">
+            © {year} NoteFlow. All rights reserved.
+          </p>
+          <p className="text-xs text-muted">
+            Made for people who&apos;d rather be listening.
+          </p>
         </div>
       </div>
     </footer>

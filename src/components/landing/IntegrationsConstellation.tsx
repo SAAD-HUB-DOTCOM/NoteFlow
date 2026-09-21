@@ -1,4 +1,4 @@
-import { Logo } from "@/components/Logo";
+import { LogoMark } from "@/components/Logo";
 
 /**
  * Integrations constellation — DESIGN.md §2.13. A center brand mark wired to integration bubbles by
@@ -41,7 +41,7 @@ export function IntegrationsConstellation() {
               style={{ ["--nebula-color" as string]: "rgba(150,0,255,0.5)" }}
             />
             <div data-border="gradient" className="relative grid h-20 w-20 place-items-center rounded-full bg-surface/90 backdrop-blur-md">
-              <Logo className="[&>span:last-child]:hidden" />
+              <LogoMark />
             </div>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function IntegrationsConstellation() {
       {/* mobile fallback: centered chip cloud */}
       <div className="relative mx-auto flex max-w-sm flex-wrap items-center justify-center gap-3 sm:hidden">
         <div data-border="gradient" className="mb-2 grid h-16 w-16 place-items-center rounded-full bg-surface/90">
-          <Logo className="[&>span:last-child]:hidden" />
+          <LogoMark />
         </div>
         <div className="flex w-full flex-wrap justify-center gap-2.5">
           {NODES.map((n) => (

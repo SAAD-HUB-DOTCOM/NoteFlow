@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 /**
  * Team stats — DESIGN.md §2.11. The Fathom "section_teams" pattern: three circular stats, each a
- * ring in a distinct hue with a vertical trail, that rise into place one-by-one on a pinned scroll
- * timeline over the signature-gradient grid. Desktop pins and scrubs; mobile falls back to a static
- * stacked column. Numbers are honest product facts (true by how NoteFlow works), never invented.
- *
- * Motion note: this reproduces a GSAP ScrollTrigger pinned/scrubbed timeline with a dependency-free
- * scroll engine (the registry blocks installing gsap in this environment). The reveal math and the
- * markup are isolated so the internals can be swapped for gsap.registerPlugin(ScrollTrigger) later
- * without touching the layout.
+ * ring in a distinct hue with a vertical trail, that rise into place one-by-one on a GSAP
+ * ScrollTrigger pinned + scrubbed timeline over the signature-gradient grid. Desktop pins and
+ * scrubs; mobile / reduced-motion show the circles statically. Numbers are honest product facts
+ * (true by how NoteFlow works), never invented.
  */
 type Stat = { value: string; label: string; hue: Hue; rise: number };
 type Hue = "orange" | "pink" | "cyan";
@@ -38,78 +39,62 @@ const TRAIL: Record<Hue, string> = {
   cyan: "linear-gradient(to top, transparent, #00BEFF)",
 };
 
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-
 export function TeamStats() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const circleRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const trailRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const root = useRef<HTMLElement>(null);
+  const pin = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+  useGSAP(
+    () => {
+      const circles = gsap.utils.toArray<HTMLElement>(".stat-circle");
+      const trails = gsap.utils.toArray<HTMLElement>(".stat-trail");
+      const shown = () => {
+        gsap.set(circles, { y: 0, autoAlpha: 1 });
+        gsap.set(trails, { scaleY: 1, autoAlpha: 0.35 });
+      };
 
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const mm = gsap.matchMedia();
 
-    const setAll = (p: number) => {
-      // Per-item window with overlap: item i reveals across [i*step, i*step + win].
-      const step = 0.26;
-      const win = 0.6;
-      STATS.forEach((s, i) => {
-        const local = easeOut(clamp01((p - i * step) / win));
-        const circle = circleRefs.current[i];
-        const trail = trailRefs.current[i];
-        if (circle) {
-          circle.style.opacity = String(local);
-          circle.style.transform = `translateY(${(1 - local) * s.rise}px)`;
-        }
-        if (trail) {
-          trail.style.opacity = String(0.35 * local);
-          trail.style.transform = `scaleY(${local})`;
-        }
+      // Desktop: pin the section and scrub the staggered rise.
+      mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
+        circles.forEach((el) => gsap.set(el, { y: Number(el.dataset.rise) || 200, autoAlpha: 0 }));
+        gsap.set(trails, { scaleY: 0, autoAlpha: 0, transformOrigin: "50% 100%" });
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: root.current,
+            start: "top top",
+            end: "+=140%",
+            scrub: 1,
+            pin: pin.current,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+          },
+        });
+
+        // Overlapping windows so each circle rises one-by-one, but the sequence stays fluid.
+        circles.forEach((circle, i) => {
+          const at = i * 0.6;
+          tl.to(circle, { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out" }, at);
+          tl.to(trails[i], { scaleY: 1, autoAlpha: 0.35, duration: 1, ease: "power3.out" }, at);
+        });
+
+        return () => shown(); // on revert (leaving desktop / cleanup), leave them visible
       });
-    };
 
-    let raf = 0;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const rect = section.getBoundingClientRect();
-        const distance = section.offsetHeight - window.innerHeight;
-        const p = clamp01(-rect.top / Math.max(1, distance));
-        setAll(p);
+      // Mobile / reduced motion: just show them, no pin, no scrub.
+      mm.add("(max-width: 1023px), (prefers-reduced-motion: reduce)", () => {
+        shown();
       });
-    };
-
-    const enable = () => {
-      window.addEventListener("scroll", onScroll, { passive: true });
-      onScroll();
-    };
-    const disable = () => {
-      window.removeEventListener("scroll", onScroll);
-      setAll(1); // fully revealed when not scrubbing (mobile / reduced motion)
-    };
-
-    const apply = () => (mq.matches && !reduce.matches ? enable() : disable());
-    apply();
-    mq.addEventListener("change", apply);
-    reduce.addEventListener("change", apply);
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      mq.removeEventListener("change", apply);
-      reduce.removeEventListener("change", apply);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+    },
+    { scope: root },
+  );
 
   return (
-    // Tall on desktop to give the pin scroll distance; natural height on mobile.
-    <section ref={sectionRef} className="relative lg:h-[220vh]">
-      <div className="lg:sticky lg:top-0 flex min-h-[60svh] items-center overflow-hidden py-20 sm:py-28 lg:min-h-[100svh] lg:py-0">
+    <section ref={root} className="relative">
+      <div
+        ref={pin}
+        className="relative flex min-h-[60svh] items-center overflow-hidden py-20 sm:py-28 lg:min-h-[100svh] lg:py-0"
+      >
         <GradientGrid />
         <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6">
           <h2 className="mx-auto max-w-2xl text-center font-display text-h2 font-normal text-foreground text-balance">
@@ -117,14 +102,11 @@ export function TeamStats() {
           </h2>
 
           <div className="mt-16 grid grid-cols-1 items-end justify-items-center gap-14 sm:mt-20 sm:grid-cols-3 sm:gap-8">
-            {STATS.map((s, i) => (
+            {STATS.map((s) => (
               <div key={s.label} className="relative flex flex-col items-center">
-                {/* rising circle */}
                 <div
-                  ref={(el) => {
-                    circleRefs.current[i] = el;
-                  }}
-                  className="relative z-10 will-change-transform"
+                  className="stat-circle relative z-10 will-change-transform"
+                  data-rise={s.rise}
                 >
                   <div
                     aria-hidden="true"
@@ -144,13 +126,9 @@ export function TeamStats() {
                     </div>
                   </div>
                 </div>
-                {/* trail beam growing up toward the circle */}
                 <div
-                  ref={(el) => {
-                    trailRefs.current[i] = el;
-                  }}
                   aria-hidden="true"
-                  className="mt-[-1px] h-28 w-px origin-bottom will-change-transform sm:h-36"
+                  className="stat-trail mt-[-1px] h-28 w-px origin-bottom will-change-transform sm:h-36"
                   style={{ background: TRAIL[s.hue] }}
                 />
               </div>
