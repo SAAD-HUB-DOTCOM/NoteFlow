@@ -10,6 +10,7 @@ import { ProductBeats } from "@/components/landing/ProductBeats";
 import { Pillars } from "@/components/landing/Pillars";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { IntegrationsConstellation } from "@/components/landing/IntegrationsConstellation";
+import { TeamStats } from "@/components/landing/TeamStats";
 import { ExtensionDownload } from "@/components/landing/ExtensionDownload";
 import { StarEyebrow, Star4 } from "@/components/landing/StarEyebrow";
 import { LockIcon } from "@/components/icons";
@@ -33,7 +34,7 @@ export default function ProductPage() {
         <Marquee />
         <AudienceSection />
         <PillarsSection />
-        <Stats />
+        <TeamStats />
         <HowItWorksSection />
         <IntegrationsSection />
         <Faq />
@@ -170,51 +171,6 @@ function PillarsSection() {
     </section>
   );
 }
-
-/* ------------------------------------------------- Stats (§2.11) --------- */
-
-function Stats() {
-  // Product facts, not fabricated metrics — each is true by how NoteFlow works.
-  const stats = [
-    { value: "0", label: "notes to write up by hand", color: "orange" },
-    { value: "1 tab", label: "holds every meeting you've had", color: "cyan" },
-    { value: "∞", label: "meetings recorded on the free plan", color: "pink" },
-  ];
-  return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-        <h2 className="mx-auto max-w-2xl text-center font-display text-h2 font-normal text-foreground text-balance">
-          Less to do after <span className="font-semibold">every call</span>
-        </h2>
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-x-6 gap-y-10 sm:gap-x-16">
-          {stats.map((s, i) => (
-            <div
-              key={s.label}
-              className={`grid aspect-square w-52 place-items-center rounded-full p-8 text-center sm:w-60 ${STAT_BG[s.color]} ${
-                i === 1 ? "sm:-translate-y-6" : i === 2 ? "sm:translate-y-4" : ""
-              }`}
-            >
-              <div>
-                <div className="font-display text-4xl font-semibold text-foreground sm:text-5xl">
-                  {s.value}
-                </div>
-                <p className="mx-auto mt-2 max-w-[9rem] text-sm leading-snug text-foreground/70">
-                  {s.label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const STAT_BG: Record<string, string> = {
-  orange: "bg-brand-orange/15 ring-1 ring-brand-orange/40",
-  cyan: "bg-brand-cyan/15 ring-1 ring-brand-cyan/40",
-  pink: "bg-brand-pink/15 ring-1 ring-brand-pink/40",
-};
 
 /* ----------------------------------------------- How it works (§2.12) ---- */
 
