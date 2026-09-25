@@ -253,18 +253,22 @@ export function ShowcaseDeck() {
       </div>
 
       <div className="relative mt-14">
-        <FrameStars />
-
-        {/* the wallpaper's light bleeding out around the desktop */}
+        {/* the wallpaper's light bleeding out around the desktop — brightened and saturated,
+            since the raw image is too dark to read as a glow over the black page */}
         <div
           aria-hidden="true"
-          className="absolute -inset-5 rounded-[32px] bg-cover bg-center opacity-50 blur-2xl sm:-inset-7"
-          style={{ backgroundImage: "url(/assets/gradient.webp)" }}
+          className="absolute -inset-8 rounded-[48px] bg-cover bg-center opacity-80 sm:-inset-14"
+          style={{
+            backgroundImage: "url(/assets/gradient.webp)",
+            filter: "blur(52px) saturate(1.5) brightness(1.6)",
+          }}
         />
+
+        <FrameStars />
 
         {/* the desktop */}
         <div
-          className="relative flex h-[560px] flex-col overflow-hidden rounded-[20px] border border-white/10 shadow-2xl shadow-black/60 sm:h-[640px]"
+          className="relative flex h-[520px] flex-col overflow-hidden rounded-[20px] border border-white/10 shadow-2xl shadow-black/60 sm:h-[600px] lg:h-[640px]"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
@@ -301,19 +305,26 @@ export function ShowcaseDeck() {
             </div>
           </div>
 
-          {/* floating app window (reel) */}
-          <div className="relative z-10 min-h-0 flex-1">
-            {SCENES.map((s, i) => (
-              <div
-                key={s.id}
-                aria-hidden={i !== active}
-                className={`absolute inset-0 grid place-items-center p-4 pb-24 transition-opacity duration-300 sm:p-6 sm:pb-28 ${
-                  i === active ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <s.Panel active={i === active} instant={reduced} />
-              </div>
-            ))}
+          {/* floating app window (reel) — scenes slide in from the right and exit left */}
+          <div className="relative z-10 min-h-0 flex-1 overflow-hidden">
+            {SCENES.map((s, i) => {
+              const prev = (active - 1 + SCENES.length) % SCENES.length;
+              const pos =
+                i === active
+                  ? "translate-x-0 opacity-100"
+                  : i === prev
+                    ? "pointer-events-none -translate-x-14 opacity-0"
+                    : "pointer-events-none translate-x-14 opacity-0";
+              return (
+                <div
+                  key={s.id}
+                  aria-hidden={i !== active}
+                  className={`absolute inset-0 grid place-items-center p-4 pb-24 transition-all duration-500 ease-out sm:p-6 sm:pb-28 ${pos}`}
+                >
+                  <s.Panel active={i === active} instant={reduced} />
+                </div>
+              );
+            })}
           </div>
 
           {/* dock, inside the desktop */}
@@ -388,8 +399,8 @@ function WindowShell({
             {primary}
             <Key>↵</Key>
           </span>
-          <span className="h-3.5 w-px bg-white/15" />
-          <span className="inline-flex items-center gap-1.5">
+          <span className="hidden h-3.5 w-px bg-white/15 sm:block" />
+          <span className="hidden items-center gap-1.5 sm:inline-flex">
             Actions
             <Key>⌘</Key>
             <Key>K</Key>
@@ -459,7 +470,7 @@ function CaptureWindow({ active, instant }: PanelProps) {
         <Step on={phase >= 4} label="ready" dot="ok" />
       </div>
       <div
-        className={`mt-4 rounded-lg bg-white/[0.06] px-3 py-2.5 text-sm text-white/85 transition-all duration-400 ${
+        className={`mt-4 rounded-lg bg-white/[0.06] px-3 py-2.5 text-sm text-white/85 transition-all duration-500 ${
           phase >= 4 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
         }`}
       >
@@ -550,7 +561,7 @@ function SummaryWindow({ active, instant }: PanelProps) {
 
   const Item = ({ on, text, meta }: { on: boolean; text: string; meta: string }) => (
     <p
-      className={`flex items-center gap-2 text-sm text-white/85 transition-all duration-400 ${
+      className={`flex items-center gap-2 text-sm text-white/85 transition-all duration-500 ${
         on ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
