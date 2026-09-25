@@ -195,28 +195,43 @@ function makeStars(count: number, seed: number) {
   return Array.from({ length: count }, (_, i) => ({
     left: `${(rand() * 100).toFixed(2)}%`,
     top: `${(rand() * 100).toFixed(2)}%`,
-    opacity: 0.12 + rand() * 0.3,
-    twinkle: i % 8 === 0,
+    size: i % 6 === 0 ? 2 : i % 3 === 0 ? 1.5 : 1,
+    opacity: 0.3 + rand() * 0.45,
+    twinkle: i % 5 === 0,
     delay: `${(rand() * 3.5).toFixed(2)}s`,
   }));
 }
-const STARS = makeStars(70, 260919);
+
+// Four dedicated bands (like the reference's top/right/bottom/left star groups) so the stars
+// visibly ring the card on every side instead of thinning out across one big field.
+const BANDS = [
+  { stars: makeStars(38, 260919), cls: "-top-24 left-[-4rem] right-[-4rem] h-24" },
+  { stars: makeStars(38, 771234), cls: "-bottom-24 left-[-4rem] right-[-4rem] h-24" },
+  { stars: makeStars(26, 445566), cls: "-left-24 top-[-2rem] bottom-[-2rem] w-24" },
+  { stars: makeStars(26, 998877), cls: "-right-24 top-[-2rem] bottom-[-2rem] w-24" },
+];
 
 function FrameStars() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute -inset-12 sm:-inset-20">
-      {STARS.map((st, i) => (
-        <span
-          key={i}
-          className={`absolute h-px w-px rounded-full bg-white ${st.twinkle ? "sc-twinkle" : ""}`}
-          style={{
-            left: st.left,
-            top: st.top,
-            opacity: st.opacity,
-            ["--o" as string]: st.opacity,
-            animationDelay: st.delay,
-          }}
-        />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {BANDS.map((band, b) => (
+        <div key={b} className={`absolute ${band.cls}`}>
+          {band.stars.map((st, i) => (
+            <span
+              key={i}
+              className={`absolute rounded-full bg-white ${st.twinkle ? "sc-twinkle" : ""}`}
+              style={{
+                left: st.left,
+                top: st.top,
+                width: `${st.size}px`,
+                height: `${st.size}px`,
+                opacity: st.opacity,
+                ["--o" as string]: st.opacity,
+                animationDelay: st.delay,
+              }}
+            />
+          ))}
+        </div>
       ))}
     </div>
   );
@@ -253,14 +268,23 @@ export function ShowcaseDeck() {
       </div>
 
       <div className="relative mt-14">
-        {/* the wallpaper's light bleeding out around the desktop — brightened and saturated,
-            since the raw image is too dark to read as a glow over the black page */}
+        {/* the wallpaper's light bleeding out around the desktop: a wide soft wash plus a
+            tight bright rim so the glow reads clearly on all four sides (the raw image is
+            too dark to glow without the brightness lift) */}
         <div
           aria-hidden="true"
-          className="absolute -inset-8 rounded-[48px] bg-cover bg-center opacity-80 sm:-inset-14"
+          className="absolute -inset-16 rounded-[56px] bg-cover bg-center opacity-90 sm:-inset-24"
           style={{
             backgroundImage: "url(/assets/gradient.webp)",
-            filter: "blur(52px) saturate(1.5) brightness(1.6)",
+            filter: "blur(72px) saturate(1.7) brightness(2)",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -inset-3 rounded-[30px] bg-cover bg-center opacity-85 sm:-inset-4"
+          style={{
+            backgroundImage: "url(/assets/gradient.webp)",
+            filter: "blur(26px) saturate(1.6) brightness(1.9)",
           }}
         />
 
