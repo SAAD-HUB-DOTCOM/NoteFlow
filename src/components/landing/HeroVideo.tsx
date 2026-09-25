@@ -79,10 +79,8 @@ export function HeroVideo() {
           playing ? "opacity-100" : "opacity-0"
         }`}
       />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent"
-      />
+      {/* No scrim: per the reference, the video shows at 100% with no overlay — the copy sits
+          directly on the footage. */}
     </>
   );
 }

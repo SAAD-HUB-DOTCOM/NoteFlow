@@ -73,7 +73,7 @@ function Hero() {
         </svg>
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-end px-5 pb-14 text-center sm:pb-[72px]">
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-end px-5 pb-12 text-center sm:pb-[85px]">
         <div
           className="vsp-badge vsp-appear vsp-pop mb-[22px] inline-flex items-center gap-2 rounded-[5px] px-[15px] py-[9px] text-[12.5px] tracking-[-0.01em] text-[#f2f2f2]"
           style={{ ["--d" as string]: "0.22s" }}
@@ -82,7 +82,7 @@ function Hero() {
           <span>AI meeting notetaker</span>
         </div>
 
-        <h1 className="vsp-h1 font-display text-[clamp(2.125rem,1.35rem+3.4vw,4.75rem)] font-medium leading-[1.12] tracking-[-0.045em] text-foreground">
+        <h1 className="vsp-h1 font-display text-[clamp(2.125rem,1rem+2.2vw,4rem)] font-medium leading-[1.12] tracking-[-0.045em] text-foreground">
           <span className="vsp-line">
             <span
               className="vsp-appear vsp-mask block"
