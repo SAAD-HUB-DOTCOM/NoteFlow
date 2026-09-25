@@ -44,30 +44,31 @@ export function LandingNav() {
             <Logo />
           </Link>
 
-          <div className="glass-pill hidden items-center gap-1 rounded-full px-2 py-1.5 md:flex">
+          {/* metallic pill links, per the Vesper hero reference */}
+          <div className="hidden items-center gap-2 md:flex">
             {LINKS.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-full px-3.5 py-1.5 text-sm text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+                className="vsp-navlink inline-flex h-10 items-center rounded-[7px] px-[18px] text-sm tracking-[-0.01em] text-[#f3f3f3]"
               >
                 {l.label}
               </a>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Link
               href="/login"
-              className="hidden font-display text-sm font-medium text-muted transition-colors hover:text-foreground sm:block"
+              className="hidden text-sm font-medium text-muted transition-colors hover:text-foreground sm:block"
             >
               Log in
             </Link>
             <Link
               href="/login"
-              className="btn-grad px-4 py-2 text-sm font-semibold uppercase tracking-wide"
+              className="vsp-btn vsp-btn-solid inline-flex h-10 items-center rounded-md px-4 text-[13.5px] font-medium tracking-[-0.02em]"
             >
-              Sign up free
+              Start for free
             </Link>
             <button
               type="button"

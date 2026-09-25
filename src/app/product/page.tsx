@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { LandingNav } from "@/components/landing/LandingNav";
-import { HeroVisual } from "@/components/landing/HeroVisual";
 import { Starfield } from "@/components/landing/Starfield";
 import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
@@ -11,9 +10,8 @@ import { Pillars } from "@/components/landing/Pillars";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { IntegrationsConstellation } from "@/components/landing/IntegrationsConstellation";
 import { TeamStats } from "@/components/landing/TeamStats";
-import { ExtensionDownload } from "@/components/landing/ExtensionDownload";
 import { StarEyebrow, Star4 } from "@/components/landing/StarEyebrow";
-import { LockIcon } from "@/components/icons";
+import { MicIcon, SparkleIcon, CheckIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "NoteFlow — AI notes for every meeting",
@@ -49,55 +47,109 @@ export default function ProductPage() {
 
 function Hero() {
   return (
-    <section className="relative -mt-16 flex min-h-[100svh] items-center overflow-hidden pt-16">
-      <Starfield />
-      {/* cinematic cosmic loop over the starfield; falls back to the still starfield when the
-          visitor prefers reduced motion. Sits behind the transparent nav so the two merge. */}
+    <section className="relative -mt-16 flex min-h-[100svh] flex-col overflow-hidden pt-16">
+      {/* full-bleed background loop (optimized fast-start 720p), per the Vesper reference */}
       <HeroVideo />
-      {/* one nebula glow anchors the composition — the only large light in the hero */}
-      <div
-        aria-hidden="true"
-        className="nebula pointer-events-none absolute -left-40 top-1/4 h-[32rem] w-[32rem] opacity-60"
-        style={{ ["--nebula-color" as string]: "rgba(150,0,255,0.4)" }}
-      />
 
-      {/* minimalist hero: headline + one line + one CTA + trust line, balanced by the visual.
-          Vertically centered so it reads as one clean screen (DESIGN.md §5, Fathom hero). */}
-      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-14">
-        <div className="animate-rise-in">
-          <h1 className="font-display text-[clamp(2.25rem,1.7rem+2.4vw,3.75rem)] font-semibold leading-[1.05] tracking-[-0.04em] text-foreground text-balance">
-            <span className="font-normal">Focus on the conversation.</span>
-            <span className="block">
-              NoteFlow{" "}
-              <span className="text-gradient-brand">keeps the record.</span>
-            </span>
-          </h1>
-          <p className="mt-5 max-w-md text-p-medium leading-relaxed text-muted">
-            NoteFlow summarizes every call the moment you hang up.{" "}
-            <strong className="font-medium text-foreground">
-              Now recording bot-free.
-            </strong>
-          </p>
-          <div className="mt-7">
-            <ExtensionDownload compact />
-          </div>
-          <p className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-            <span className="inline-flex items-center gap-2 text-foreground/70">
-              <LockIcon className="h-3.5 w-3.5" />
-              SOC 2 Type II
-            </span>
-            {["GDPR", "HIPAA", "SSO / SCIM"].map((b) => (
-              <span key={b} className="border-l border-border pl-4">
-                {b}
-              </span>
-            ))}
-          </p>
+      <div
+        className="vsp-grain pointer-events-none absolute inset-0 z-20"
+        aria-hidden="true"
+      >
+        <svg
+          className="block h-full w-full"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
+        >
+          <filter id="vsp-noise">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.85"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#vsp-noise)" />
+        </svg>
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-end px-5 pb-14 text-center sm:pb-[72px]">
+        <div
+          className="vsp-badge vsp-appear vsp-pop mb-[22px] inline-flex items-center gap-2 rounded-[5px] px-[15px] py-[9px] text-[12.5px] tracking-[-0.01em] text-[#f2f2f2]"
+          style={{ ["--d" as string]: "0.22s" }}
+        >
+          <Star4 className="vsp-star h-[18px] w-[18px] text-white" />
+          <span>AI meeting notetaker</span>
         </div>
 
-        {/* the card cluster shows on desktop, where there's height for it; on phones/tablets the
-            hero stays a single clean screen of headline + CTA */}
-        <div className="hidden animate-rise-in [animation-delay:120ms] lg:block">
-          <HeroVisual />
+        <h1 className="vsp-h1 font-display text-[clamp(2.125rem,1.35rem+3.4vw,4.75rem)] font-medium leading-[1.12] tracking-[-0.045em] text-foreground">
+          <span className="vsp-line">
+            <span
+              className="vsp-appear vsp-mask block"
+              style={{ ["--d" as string]: "0.42s" }}
+            >
+              Be in the <em>conversation</em>,
+            </span>
+          </span>
+          <span className="vsp-line">
+            <span
+              className="vsp-appear vsp-mask block"
+              style={{ ["--d" as string]: "0.62s" }}
+            >
+              not in your notes.
+            </span>
+          </span>
+        </h1>
+
+        <p
+          className="vsp-appear vsp-soft mt-[18px] max-w-[470px] text-[15.5px] leading-[1.55] tracking-[-0.015em] text-[#9a9a9a]"
+          style={{ ["--d" as string]: "0.82s" }}
+        >
+          NoteFlow records, transcribes, and summarizes every meeting — the
+          recap, action items, and answers are ready the moment you hang up.
+        </p>
+
+        <div className="mt-[26px] flex flex-wrap items-center justify-center gap-2.5">
+          <Link
+            href="/login"
+            className="vsp-btn vsp-btn-solid vsp-appear vsp-btn-in inline-flex h-[42px] items-center rounded-md px-[18px] text-[13.5px] font-medium tracking-[-0.02em]"
+            style={{ ["--d" as string]: "0.96s" }}
+          >
+            Start for free
+          </Link>
+          <Link
+            href="/meeting/noteflow-product-planning"
+            className="vsp-btn vsp-btn-ghost vsp-appear vsp-side inline-flex h-[42px] items-center rounded-md px-[18px] text-[13.5px] font-medium tracking-[-0.02em]"
+            style={{ ["--d" as string]: "1.1s" }}
+          >
+            See a live recap
+          </Link>
+        </div>
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-9 sm:px-12">
+        <div className="flex flex-col items-center justify-between gap-4 text-[13.5px] tracking-[-0.015em] text-[#d8d8d8] sm:flex-row">
+          <span
+            className="vsp-appear vsp-stat inline-flex items-center gap-3.5"
+            style={{ ["--d" as string]: "1.12s" }}
+          >
+            <MicIcon className="h-5 w-5 text-[#e8e8e8]" />
+            Records on Meet, Zoom &amp; Teams
+          </span>
+          <span
+            className="vsp-appear vsp-stat inline-flex items-center gap-3.5"
+            style={{ ["--d" as string]: "1.28s" }}
+          >
+            <SparkleIcon className="h-5 w-5 text-[#e8e8e8]" />
+            Recap ready the moment you hang up
+          </span>
+          <span
+            className="vsp-appear vsp-stat inline-flex items-center gap-3.5"
+            style={{ ["--d" as string]: "1.44s" }}
+          >
+            <CheckIcon className="h-5 w-5 text-[#e8e8e8]" />
+            Unlimited meetings on the free plan
+          </span>
         </div>
       </div>
     </section>
@@ -116,10 +168,7 @@ function BeatsSection() {
   );
 }
 
-/* ----------------------------------------------- Marquee (§3) ------------- */
-
 function Marquee() {
-  // One authored phrase, gradient-clipped keyword; a single slow continuous drift.
   const unit = Array.from({ length: 4 });
   return (
     <section
@@ -143,8 +192,6 @@ function Marquee() {
     </section>
   );
 }
-
-/* ----------------------------------------------- Audience tabs (§5.5) ----- */
 
 function AudienceSection() {
   return (

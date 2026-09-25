@@ -47,7 +47,10 @@ export function HeroVideo() {
     v.addEventListener("canplay", tryPlay);
 
     const gesture = () => tryPlay();
-    window.addEventListener("touchstart", gesture, { once: true, passive: true });
+    window.addEventListener("touchstart", gesture, {
+      once: true,
+      passive: true,
+    });
     window.addEventListener("pointerdown", gesture, { once: true });
 
     return () => {
@@ -73,17 +76,12 @@ export function HeroVideo() {
         onPlaying={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-          playing ? "opacity-[0.6]" : "opacity-0"
+          playing ? "opacity-100" : "opacity-0"
         }`}
       />
-      {/* legibility scrims: keep the lower-left (headline + CTA) grounded in the base color */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/55 to-transparent"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent"
       />
     </>
   );
