@@ -7,6 +7,7 @@ import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
 import { ShowcaseDeck } from "@/components/landing/ShowcaseDeck";
 import { Pillars } from "@/components/landing/Pillars";
+import { MeetingAnswers } from "@/components/landing/MeetingAnswers";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { IntegrationsConstellation } from "@/components/landing/IntegrationsConstellation";
 import { TeamStats } from "@/components/landing/TeamStats";
@@ -29,8 +30,8 @@ export default function ProductPage() {
       <main>
         <Hero />
         <BeatsSection />
-        <Marquee />
-        <AudienceSection />
+        {/* <Marquee /> */}
+        <MeetingAnswers />
         <PillarsSection />
         <TeamStats />
         <HowItWorksSection />
@@ -43,12 +44,9 @@ export default function ProductPage() {
   );
 }
 
-/* ---------------------------------------------------------------- Hero ---- */
-
 function Hero() {
   return (
     <section className="relative -mt-16 flex min-h-[100svh] flex-col overflow-hidden pt-16">
-      {/* full-bleed background loop (optimized fast-start 720p), per the Vesper reference */}
       <HeroVideo />
 
       <div
@@ -156,8 +154,6 @@ function Hero() {
   );
 }
 
-/* ----------------------------------------------- Beats slider (§2.9) ------ */
-
 function BeatsSection() {
   return (
     <section id="features" className="relative scroll-mt-24 overflow-hidden">
@@ -211,8 +207,6 @@ function AudienceSection() {
   );
 }
 
-// The pillars are a GSAP scroll-pinned switcher that owns its own section shell + heading
-// (DESIGN.md §2.10) — see components/landing/Pillars.tsx.
 function PillarsSection() {
   return <Pillars />;
 }

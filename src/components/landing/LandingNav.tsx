@@ -12,17 +12,10 @@ const LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-/**
- * Cosmic marketing nav: a thin announcement rail over a floating pill of links, matching the
- * reference's chrome. The links live in a bordered capsule so the bar reads as one object over
- * the starfield; the mobile toggle opens a short inline sheet rather than a full drawer.
- */
 export function LandingNav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Transparent over the cosmic hero at the top; a frosted bar as soon as the page scrolls, so
-  // content slides beneath frosted glass instead of a see-through bar.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -40,11 +33,14 @@ export function LandingNav() {
         }`}
       >
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/product" className="rounded-lg" aria-label="NoteFlow home">
+          <Link
+            href="/product"
+            className="rounded-lg"
+            aria-label="NoteFlow home"
+          >
             <Logo />
           </Link>
 
-          {/* metallic pill links, per the Vesper hero reference */}
           <div className="hidden items-center gap-2 md:flex">
             {LINKS.map((l) => (
               <a
@@ -80,7 +76,15 @@ export function LandingNav() {
               {open ? (
                 <CloseIcon className="h-5 w-5" />
               ) : (
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
                   <path d="M4 7h16M4 12h16M4 17h16" />
                 </svg>
               )}

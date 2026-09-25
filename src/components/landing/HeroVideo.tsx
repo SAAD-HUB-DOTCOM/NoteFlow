@@ -60,13 +60,33 @@ export function HeroVideo() {
     };
   }, [show]);
 
-  if (!show) return null;
+  // Reduced motion: a still poster frame — same view, no playback.
+  if (!show)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/hero-poster.webp"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      />
+    );
 
   return (
     <>
+      {/* Poster paints instantly (~45 KB webp) so the hero is never empty while the
+          653 KB faststart clip buffers — the video then fades in over it. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/hero-poster.webp"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      />
       <video
         ref={ref}
         src="/hero.mp4"
+        poster="/hero-poster.webp"
         autoPlay
         loop
         muted

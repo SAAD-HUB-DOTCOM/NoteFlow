@@ -10,21 +10,6 @@ import {
   CheckIcon,
 } from "@/components/icons";
 
-/**
- * Raycast-style desktop showcase, per the user's reference: a full macOS desktop card whose
- * WALLPAPER is the gradient image; a frosted app window floats in the center and blurs the
- * wallpaper behind it; a macOS dock (with a tooltip over the active tile) sits at the bottom
- * of the desktop; and outside the card the wallpaper's light bleeds out as a glow with faint
- * stars around it.
- *
- * Each scene plays like a screen recording — the capture URL types itself, the transcript
- * plays, the summary streams, Ask sends and answers, a cursor clicks Copy link — and the reel
- * auto-advances, moving the dock's active tile. Reduced-motion visitors get finished frames
- * and manual dock switching only. Every scene shows only what the product really does.
- */
-
-/* ---- animation primitives -------------------------------------------------- */
-
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -37,7 +22,6 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-/** Phase counter: how many of `cues` (ms from scene start) have elapsed. */
 function useTimeline(active: boolean, instant: boolean, cues: number[]) {
   const [phase, setPhase] = useState(0);
   useEffect(() => {
@@ -52,13 +36,17 @@ function useTimeline(active: boolean, instant: boolean, cues: number[]) {
     setPhase(0);
     const timers = cues.map((t, i) => setTimeout(() => setPhase(i + 1), t));
     return () => timers.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, instant]);
   return phase;
 }
 
-/** Typewriter: reveals `text` character by character once `go` is true. */
-function useType(text: string, go: boolean, instant: boolean, speed = 28, delay = 0) {
+function useType(
+  text: string,
+  go: boolean,
+  instant: boolean,
+  speed = 28,
+  delay = 0,
+) {
   const [n, setN] = useState(0);
   useEffect(() => {
     if (!go) {
@@ -142,7 +130,8 @@ const SCENES: Scene[] = [
     label: "Capture",
     icon: <MicIcon className="h-5 w-5" />,
     lead: "Send the notetaker.",
-    caption: "Paste a meeting link, or record in one click from the Chrome extension.",
+    caption:
+      "Paste a meeting link, or record in one click from the Chrome extension.",
     duration: 7200,
     Panel: CaptureWindow,
   },
@@ -184,8 +173,6 @@ const SCENES: Scene[] = [
   },
 ];
 
-/* ---- stars around the desktop (deterministic: SSR and client agree) --------- */
-
 function makeStars(count: number, seed: number) {
   let s = seed;
   const rand = () => {
@@ -202,13 +189,23 @@ function makeStars(count: number, seed: number) {
   }));
 }
 
-// Four dedicated bands (like the reference's top/right/bottom/left star groups) so the stars
-// visibly ring the card on every side instead of thinning out across one big field.
 const BANDS = [
-  { stars: makeStars(38, 260919), cls: "-top-24 left-[-4rem] right-[-4rem] h-24" },
-  { stars: makeStars(38, 771234), cls: "-bottom-24 left-[-4rem] right-[-4rem] h-24" },
-  { stars: makeStars(26, 445566), cls: "-left-24 top-[-2rem] bottom-[-2rem] w-24" },
-  { stars: makeStars(26, 998877), cls: "-right-24 top-[-2rem] bottom-[-2rem] w-24" },
+  {
+    stars: makeStars(38, 260919),
+    cls: "-top-24 left-[-4rem] right-[-4rem] h-24",
+  },
+  {
+    stars: makeStars(38, 771234),
+    cls: "-bottom-24 left-[-4rem] right-[-4rem] h-24",
+  },
+  {
+    stars: makeStars(26, 445566),
+    cls: "-left-24 top-[-2rem] bottom-[-2rem] w-24",
+  },
+  {
+    stars: makeStars(26, 998877),
+    cls: "-right-24 top-[-2rem] bottom-[-2rem] w-24",
+  },
 ];
 
 function FrameStars() {
@@ -237,8 +234,6 @@ function FrameStars() {
   );
 }
 
-/* ---- deck -------------------------------------------------------------------- */
-
 export function ShowcaseDeck() {
   const reduced = usePrefersReducedMotion();
   const [active, setActive] = useState(0);
@@ -257,7 +252,6 @@ export function ShowcaseDeck() {
 
   return (
     <div>
-      {/* section title — small and quiet; the desktop is the section's subject */}
       <div className="mx-auto max-w-xl text-center">
         <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
           Capture once, use it four ways.
@@ -268,9 +262,6 @@ export function ShowcaseDeck() {
       </div>
 
       <div className="relative mt-14">
-        {/* the wallpaper's light bleeding out around the desktop: a wide soft wash plus a
-            tight bright rim so the glow reads clearly on all four sides (the raw image is
-            too dark to glow without the brightness lift) */}
         <div
           aria-hidden="true"
           className="absolute -inset-16 rounded-[56px] bg-cover bg-center opacity-90 sm:-inset-24"
@@ -290,13 +281,11 @@ export function ShowcaseDeck() {
 
         <FrameStars />
 
-        {/* the desktop */}
         <div
           className="relative flex h-[520px] flex-col overflow-hidden rounded-[20px] border border-white/10 shadow-2xl shadow-black/60 sm:h-[600px] lg:h-[640px]"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          {/* wallpaper */}
           <img
             src="/assets/gradient.webp"
             alt=""
@@ -305,31 +294,62 @@ export function ShowcaseDeck() {
           />
           <div aria-hidden="true" className="absolute inset-0 bg-black/25" />
 
-          {/* menu bar */}
           <div className="relative z-10 flex items-center justify-between bg-black/30 px-4 py-1.5 text-xs text-white/55 backdrop-blur-xl">
             <div className="flex items-center gap-4 overflow-hidden whitespace-nowrap">
               <span className="font-semibold text-white/75">NoteFlow</span>
-              {["File", "Edit", "View", "Meeting", "Window", "Help"].map((m) => (
-                <span key={m} className="hidden sm:inline">
-                  {m}
-                </span>
-              ))}
+              {["File", "Edit", "View", "Meeting", "Window", "Help"].map(
+                (m) => (
+                  <span key={m} className="hidden sm:inline">
+                    {m}
+                  </span>
+                ),
+              )}
             </div>
             <div className="flex items-center gap-3">
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" aria-hidden="true">
+              <svg
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.4}
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
                 <path d="M2 6.5a8.5 8.5 0 0 1 12 0M4.3 9a5.2 5.2 0 0 1 7.4 0M6.6 11.4a2 2 0 0 1 2.8 0" />
-                <circle cx="8" cy="13.4" r="0.7" fill="currentColor" stroke="none" />
+                <circle
+                  cx="8"
+                  cy="13.4"
+                  r="0.7"
+                  fill="currentColor"
+                  stroke="none"
+                />
               </svg>
-              <svg viewBox="0 0 20 12" className="h-3 w-5" fill="none" stroke="currentColor" strokeWidth={1.2} aria-hidden="true">
+              <svg
+                viewBox="0 0 20 12"
+                className="h-3 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.2}
+                aria-hidden="true"
+              >
                 <rect x="1" y="1.5" width="15" height="9" rx="2.5" />
-                <rect x="2.8" y="3.3" width="9" height="5.4" rx="1.2" fill="currentColor" stroke="none" />
+                <rect
+                  x="2.8"
+                  y="3.3"
+                  width="9"
+                  height="5.4"
+                  rx="1.2"
+                  fill="currentColor"
+                  stroke="none"
+                />
                 <path d="M17.6 4.5v3" strokeLinecap="round" />
               </svg>
-              <span className="hidden tabular-nums sm:inline">Fri Sep 26  9:41 AM</span>
+              <span className="hidden tabular-nums sm:inline">
+                Fri Sep 26 9:41 AM
+              </span>
             </div>
           </div>
 
-          {/* floating app window (reel) — scenes slide in from the right and exit left */}
           <div className="relative z-10 min-h-0 flex-1 overflow-hidden">
             {SCENES.map((s, i) => {
               const prev = (active - 1 + SCENES.length) % SCENES.length;
@@ -351,7 +371,6 @@ export function ShowcaseDeck() {
             })}
           </div>
 
-          {/* dock, inside the desktop */}
           <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center sm:bottom-5">
             <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/35 px-2.5 py-2 backdrop-blur-xl">
               {SCENES.map((s, i) => {
@@ -370,10 +389,11 @@ export function ShowcaseDeck() {
                     }`}
                   >
                     {s.icon}
-                    {/* tooltip over the active tile, like the reference */}
                     <span
                       className={`pointer-events-none absolute -top-9 whitespace-nowrap rounded-md border border-white/10 bg-black/80 px-2.5 py-1 text-xs font-medium text-white shadow-lg transition-all duration-300 ${
-                        on ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                        on
+                          ? "translate-y-0 opacity-100"
+                          : "translate-y-1 opacity-0"
                       }`}
                     >
                       {s.label}
@@ -386,15 +406,16 @@ export function ShowcaseDeck() {
         </div>
       </div>
 
-      {/* caption for the active scene, in the reference's bold-lead pattern */}
-      <p className="mx-auto mt-6 max-w-lg text-center text-p-small text-muted" aria-live="polite">
-        <span className="font-medium text-foreground">{current.lead}</span> {current.caption}
+      <p
+        className="relative z-10 mx-auto mt-12 max-w-lg text-center text-p-small text-muted"
+        aria-live="polite"
+      >
+        <span className="font-medium text-foreground">{current.lead}</span>{" "}
+        {current.caption}
       </p>
     </div>
   );
 }
-
-/* ---- app-window chrome -------------------------------------------------------- */
 
 function WindowShell({
   top,
@@ -411,7 +432,9 @@ function WindowShell({
 }) {
   return (
     <div className="w-full max-w-[560px] overflow-hidden rounded-xl border border-white/10 bg-[#161618]/55 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] backdrop-blur-3xl">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">{top}</div>
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+        {top}
+      </div>
       <div className="min-h-[210px] p-4">{children}</div>
       <div className="flex items-center justify-between border-t border-white/10 px-3.5 py-2 text-xs text-white/60">
         <span className="inline-flex items-center gap-2">
@@ -436,12 +459,19 @@ function WindowShell({
 }
 
 const BackArrow = () => (
-  <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-white/50" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    viewBox="0 0 16 16"
+    className="h-4 w-4 shrink-0 text-white/50"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M6.25 4.75 2.75 8m0 0 3.5 3.25M2.75 8h10.5" />
   </svg>
 );
-
-/* ---- scene 1 · capture: the URL types itself in the command bar --------------- */
 
 const MEET_URL = "https://meet.google.com/abc-defg-hij";
 
@@ -449,7 +479,15 @@ function CaptureWindow({ active, instant }: PanelProps) {
   const phase = useTimeline(active, instant, [2350, 3100, 4300, 5900]);
   const { out: url } = useType(MEET_URL, active, instant, 42, 500);
 
-  const Step = ({ on, label, dot }: { on: boolean; label: string; dot?: "rec" | "ok" }) => (
+  const Step = ({
+    on,
+    label,
+    dot,
+  }: {
+    on: boolean;
+    label: string;
+    dot?: "rec" | "ok";
+  }) => (
     <span
       className={`inline-flex items-center gap-1.5 transition-colors duration-300 ${
         on ? "font-medium text-white" : "text-white/40"
@@ -458,7 +496,9 @@ function CaptureWindow({ active, instant }: PanelProps) {
       {on && dot === "rec" && (
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />
       )}
-      {on && dot === "ok" && <CheckIcon className="h-3.5 w-3.5 text-white/85" />}
+      {on && dot === "ok" && (
+        <CheckIcon className="h-3.5 w-3.5 text-white/85" />
+      )}
       {label}
     </span>
   );
@@ -469,7 +509,9 @@ function CaptureWindow({ active, instant }: PanelProps) {
         <>
           <BackArrow />
           <span className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-sm text-white/90">
-            {url || <span className="text-white/35">Paste a meeting link…</span>}
+            {url || (
+              <span className="text-white/35">Paste a meeting link…</span>
+            )}
             {active && phase < 1 && <Caret />}
           </span>
           <span
@@ -501,16 +543,17 @@ function CaptureWindow({ active, instant }: PanelProps) {
         Weekly product planning — recorded. Transcript and recap are ready.
       </div>
       <p className="mt-4 text-[13px] leading-relaxed text-white/45">
-        On Google Meet, Zoom, or Teams the extension shows a Record button, so there is no link
-        to paste at all.
+        On Google Meet, Zoom, or Teams the extension shows a Record button, so
+        there is no link to paste at all.
       </p>
     </WindowShell>
   );
 }
 
-/* ---- scene 2 · transcript: the recording plays and lines light up ------------- */
-
-const WAVE = [40, 70, 45, 85, 60, 95, 50, 75, 100, 55, 80, 45, 65, 90, 40, 60, 75, 50, 85, 45, 70, 55];
+const WAVE = [
+  40, 70, 45, 85, 60, 95, 50, 75, 100, 55, 80, 45, 65, 90, 40, 60, 75, 50, 85,
+  45, 70, 55,
+];
 const LINES = [
   { who: "Saad", t: "11:58", text: "Dashboard will be done Saturday by 8." },
   { who: "Priya", t: "12:01", text: "Then let's lock the launch theme today." },
@@ -520,7 +563,10 @@ const LINES = [
 function TranscriptWindow({ active, instant }: PanelProps) {
   const progress = useProgress(active, instant, 6200);
   const played = Math.floor(progress * WAVE.length);
-  const activeLine = Math.min(LINES.length - 1, Math.floor(progress * LINES.length));
+  const activeLine = Math.min(
+    LINES.length - 1,
+    Math.floor(progress * LINES.length),
+  );
 
   return (
     <WindowShell
@@ -543,7 +589,10 @@ function TranscriptWindow({ active, instant }: PanelProps) {
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-black">
           <PlayIcon className="h-3.5 w-3.5" />
         </span>
-        <span className="flex h-6 flex-1 items-center gap-[3px]" aria-hidden="true">
+        <span
+          className="flex h-6 flex-1 items-center gap-[3px]"
+          aria-hidden="true"
+        >
           {WAVE.map((h, i) => (
             <span
               key={i}
@@ -564,7 +613,9 @@ function TranscriptWindow({ active, instant }: PanelProps) {
             }`}
           >
             <span className="font-medium text-white/95">{l.who}</span>
-            <span className="ml-2 text-xs tabular-nums text-white/40">{l.t}</span>
+            <span className="ml-2 text-xs tabular-nums text-white/40">
+              {l.t}
+            </span>
             <p className="mt-0.5 leading-snug text-white/70">{l.text}</p>
           </div>
         ))}
@@ -573,9 +624,8 @@ function TranscriptWindow({ active, instant }: PanelProps) {
   );
 }
 
-/* ---- scene 3 · summary: the recap streams in, then action items land ---------- */
-
-const BULLET_1 = "Dashboard ships Saturday; the transcript view follows on Sunday.";
+const BULLET_1 =
+  "Dashboard ships Saturday; the transcript view follows on Sunday.";
 const BULLET_2 = "The team locked the launch theme in the first ten minutes.";
 
 function SummaryWindow({ active, instant }: PanelProps) {
@@ -583,7 +633,15 @@ function SummaryWindow({ active, instant }: PanelProps) {
   const b2 = useType(BULLET_2, active && b1.done, instant, 22, 250);
   const phase = useTimeline(active, instant, [4600, 5300, 6000]);
 
-  const Item = ({ on, text, meta }: { on: boolean; text: string; meta: string }) => (
+  const Item = ({
+    on,
+    text,
+    meta,
+  }: {
+    on: boolean;
+    text: string;
+    meta: string;
+  }) => (
     <p
       className={`flex items-center gap-2 text-sm text-white/85 transition-all duration-500 ${
         on ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
@@ -636,8 +694,6 @@ function SummaryWindow({ active, instant }: PanelProps) {
     </WindowShell>
   );
 }
-
-/* ---- scene 4 · ask: the question sends, the answer streams, the cite lands ---- */
 
 const QUESTION = "What did I commit to this week?";
 const ANSWER =
@@ -700,7 +756,9 @@ function AskWindow({ active, instant }: PanelProps) {
               </p>
               <span
                 className={`mt-2 inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2 py-1 text-xs text-brand-cyan transition-all duration-300 ${
-                  phase >= 3 ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                  phase >= 3
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-1 opacity-0"
                 }`}
               >
                 <PlayIcon className="h-3 w-3" />
@@ -713,8 +771,6 @@ function AskWindow({ active, instant }: PanelProps) {
     </WindowShell>
   );
 }
-
-/* ---- scene 5 · share: a cursor glides to Copy link and clicks ------------------ */
 
 function ShareWindow({ active, instant }: PanelProps) {
   const phase = useTimeline(active, instant, [700, 2100, 2400]);
@@ -757,7 +813,8 @@ function ShareWindow({ active, instant }: PanelProps) {
               phase >= 1 ? "opacity-100" : "opacity-0"
             }`}
             style={{
-              transform: phase >= 2 ? "translate(-2px, -2px)" : "translate(96px, 72px)",
+              transform:
+                phase >= 2 ? "translate(-2px, -2px)" : "translate(96px, 72px)",
             }}
           >
             <path
@@ -770,8 +827,8 @@ function ShareWindow({ active, instant }: PanelProps) {
         </span>
       </div>
       <p className="mt-4 text-[13px] leading-relaxed text-white/45">
-        The link opens the recap and full transcript in the browser. No NoteFlow account needed
-        to read it.
+        The link opens the recap and full transcript in the browser. No NoteFlow
+        account needed to read it.
       </p>
     </WindowShell>
   );
