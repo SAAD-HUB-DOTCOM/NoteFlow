@@ -5,7 +5,7 @@ import { LandingNav } from "@/components/landing/LandingNav";
 import { Starfield } from "@/components/landing/Starfield";
 import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
-import { ProductBeats } from "@/components/landing/ProductBeats";
+import { ShowcaseDeck } from "@/components/landing/ShowcaseDeck";
 import { Pillars } from "@/components/landing/Pillars";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { IntegrationsConstellation } from "@/components/landing/IntegrationsConstellation";
@@ -162,7 +162,7 @@ function BeatsSection() {
   return (
     <section id="features" className="relative scroll-mt-24 overflow-hidden">
       <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28">
-        <ProductBeats />
+        <ShowcaseDeck />
       </div>
     </section>
   );
