@@ -74,9 +74,6 @@ export function HeroVideo() {
 
   return (
     <>
-      {/* Poster paints instantly (~45 KB webp) so the hero is never empty while the
-          653 KB faststart clip buffers — the video then fades in over it. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/hero-poster.webp"
         alt=""

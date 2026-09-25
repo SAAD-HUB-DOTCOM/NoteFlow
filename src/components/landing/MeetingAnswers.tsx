@@ -289,7 +289,7 @@ const GROUPS: Group[] = [
         surface: "Shareable recap",
         need: "Send whoever missed it a link. No account needed to read it.",
         hue: "pink",
-        accent: "86,132,232", // royal blue — the handshake
+        accent: "86,132,232",
         icon: ShareIcon,
         iconImg: "/assets/shareable-icon.png",
         visualImg: "/assets/shareable.png",
@@ -307,7 +307,7 @@ const GROUPS: Group[] = [
         surface: "Speaker transcript",
         need: "Every word as it's said, tagged with who said it.",
         hue: "cyan",
-        accent: "94,166,164", // muted teal — the transcript illustration
+        accent: "94,166,164",
         icon: UsersIcon,
         iconImg: "/assets/transcript-icon.png",
         visualImg: "/assets/transcript.png",

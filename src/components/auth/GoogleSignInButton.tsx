@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { getSupabaseBrowser, isSupabaseConfigured } from "@/lib/supabase/client";
 
 /**
@@ -12,10 +12,13 @@ export function GoogleSignInButton({
   label = "Continue with Google",
   next = "/app/meetings",
   className,
+  trailing,
 }: {
   label?: string;
   next?: string;
   className?: string;
+  /** Optional element rendered after the label (e.g. a trailing arrow). */
+  trailing?: ReactNode;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +59,7 @@ export function GoogleSignInButton({
       >
         <GoogleGlyph />
         {loading ? "Redirecting…" : label}
+        {trailing}
       </button>
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
