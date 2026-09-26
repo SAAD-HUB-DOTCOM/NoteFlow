@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from sqlalchemy.exc import IntegrityError
+from starlette.concurrency import run_in_threadpool
 
 from app.config import get_settings
 from app.db import SessionLocal
@@ -20,6 +21,7 @@ from app.models import Meeting, WebhookEvent
 from app.services.recall import map_bot_status, verify_webhook_signature, webhook_event_id
 from app.services.transcription import (
     enqueue_job,
+    finalize_meeting,
     run_create_transcript,
     run_process_transcript,
 )
@@ -186,6 +188,60 @@ def apply_event(db, body: dict, background_tasks: BackgroundTasks | None = None)
 
     db.commit()
 
+    # Terminal bot states: the call is over — reconcile with Recall in the background so the
+    # meeting always concludes (transcript processed, async fallback started, or an honest
+    # "no recording" ending) even when recording.done / transcript.done deliveries were lost.
+    if code in ("done", "call_ended", "fatal") and background_tasks is not None:
+        background_tasks.add_task(finalize_meeting, meeting.id)
+
+
+def _process_webhook(raw: bytes, event_id: str | None, body: dict, background_tasks: BackgroundTasks) -> None:
+    """Synchronous webhook processing — runs in the threadpool, never on the event loop.
+
+    Any processing error is recorded on the WebhookEvent row and swallowed: we still return
+    200 to Recall, because retry storms don't fix bugs and the sweeper reconciles any meeting
+    a lost event would have advanced.
+    """
+    db = SessionLocal()
+    try:
+        # Idempotency: unique (provider, external_event_id). Duplicate delivery → no-op.
+        if event_id:
+            existing = (
+                db.query(WebhookEvent)
+                .filter(WebhookEvent.provider == "recall", WebhookEvent.external_event_id == event_id)
+                .first()
+            )
+            if existing:
+                return
+
+        evt = WebhookEvent(
+            provider="recall",
+            external_event_id=event_id,
+            event_type=body.get("event"),
+            payload_hash=hashlib.sha256(raw).hexdigest(),
+            status="received",
+        )
+        db.add(evt)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()  # concurrent duplicate
+            return
+
+        try:
+            apply_event(db, body, background_tasks)
+            evt.status = "processed"
+            evt.processed_at = datetime.now(timezone.utc)
+            db.commit()
+        except Exception as exc:  # noqa: BLE001 — never bubble a 500 back to Recall
+            db.rollback()
+            log.exception("webhook processing failed event=%s: %s", body.get("event"), exc)
+            evt.status = "failed"
+            evt.error = str(exc)[:2000]
+            db.commit()
+    finally:
+        db.close()
+
 
 @router.post("/webhooks/recall")
 async def recall_webhook(request: Request, background_tasks: BackgroundTasks) -> Response:
@@ -206,37 +262,7 @@ async def recall_webhook(request: Request, background_tasks: BackgroundTasks) ->
     except json.JSONDecodeError:
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
-    db = SessionLocal()
-    try:
-        # Idempotency: unique (provider, external_event_id). Duplicate delivery → 200 no-op.
-        if event_id:
-            existing = (
-                db.query(WebhookEvent)
-                .filter(WebhookEvent.provider == "recall", WebhookEvent.external_event_id == event_id)
-                .first()
-            )
-            if existing:
-                return Response(status_code=status.HTTP_200_OK)
-
-        evt = WebhookEvent(
-            provider="recall",
-            external_event_id=event_id,
-            event_type=body.get("event"),
-            payload_hash=hashlib.sha256(raw).hexdigest(),
-            status="received",
-        )
-        db.add(evt)
-        try:
-            db.commit()
-        except IntegrityError:
-            db.rollback()  # concurrent duplicate
-            return Response(status_code=status.HTTP_200_OK)
-
-        apply_event(db, body, background_tasks)
-        evt.status = "processed"
-        evt.processed_at = datetime.now(timezone.utc)
-        db.commit()
-    finally:
-        db.close()
-
+    # All DB work is synchronous SQLAlchemy — run it in the threadpool so a slow pooler
+    # round-trip can never block the event loop and time out concurrent deliveries.
+    await run_in_threadpool(_process_webhook, raw, event_id, body, background_tasks)
     return Response(status_code=status.HTTP_200_OK)

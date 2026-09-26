@@ -31,13 +31,30 @@ class RecallService:
         return {"Authorization": f"Token {self.api_key}", "Content-Type": "application/json"}
 
     def create_bot(self, meeting_url: str, bot_name: str = "NoteFlow Notetaker") -> dict:
-        """Send a bot to a meeting. Returns Recall's bot object (contains the bot id)."""
+        """Send a bot to a meeting. Returns Recall's bot object (contains the bot id).
+
+        The bot transcribes IN REALTIME with Recall's native streaming provider
+        (`prioritize_low_latency`: 1–3s behind live audio), so the transcript is complete
+        seconds after the call ends instead of waiting on a post-hoc async job over the whole
+        recording. Diarization uses separate per-participant streams (Meet/Zoom/Teams), which
+        is what puts REAL participant names on transcript lines instead of Speaker A/B.
+        Recording defaults (video_mixed_mp4 etc.) are unaffected — specifying
+        recording_config.transcript does not replace them (verified against Recall's bot_create
+        schema). If realtime fails for a meeting, the async AssemblyAI path remains the
+        fallback via create_transcript().
+        """
+        body = {
+            "meeting_url": meeting_url,
+            "bot_name": bot_name,
+            "recording_config": {
+                "transcript": {
+                    "provider": {"recallai_streaming": {"mode": "prioritize_low_latency"}},
+                    "diarization": {"use_separate_streams_when_available": True},
+                },
+            },
+        }
         with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{self.base_url}/bot/",
-                json={"meeting_url": meeting_url, "bot_name": bot_name},
-                headers=self._headers(),
-            )
+            resp = client.post(f"{self.base_url}/bot/", json=body, headers=self._headers())
             resp.raise_for_status()
             return resp.json()
 
@@ -200,7 +217,9 @@ def sign_webhook(secret: str, msg_id: str, timestamp: str, raw_body: bytes) -> s
 RECALL_BOT_STATUS_MAP: dict[str, str] = {
     "joining_call": "joining",
     "in_waiting_room": "in_waiting_room",
-    "in_call_not_recording": "recording",
+    # In the call but not recording yet — showing "recording" here was a lie; the bot is
+    # still effectively joining from the user's perspective.
+    "in_call_not_recording": "joining",
     "in_call_recording": "recording",
     "recording_permission_allowed": "recording",
     "recording_done": "recording_complete",

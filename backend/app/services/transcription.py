@@ -222,6 +222,14 @@ def reconcile_recording(db, meeting, recall) -> bool:
     return bool(meeting.recall_recording_id)
 
 
+def _recording_transcript_shortcut(bot: dict) -> dict:
+    """The latest recording's media_shortcuts.transcript object ({} if absent)."""
+    recordings = bot.get("recordings") or []
+    if not recordings:
+        return {}
+    return (recordings[-1].get("media_shortcuts") or {}).get("transcript") or {}
+
+
 def run_create_transcript(meeting_id: str) -> None:
     settings = get_settings()
     db = SessionLocal()
@@ -238,8 +246,33 @@ def run_create_transcript(meeting_id: str) -> None:
             recall = get_recall_service(settings.recall_api_key, settings.recall_region)
             # Real payloads may not carry the recording id — reconcile from the bot object.
             if not reconcile_recording(db, meeting, recall):
-                raise RuntimeError("No recording found for this bot yet")
-            log.info("create_transcript meeting_id=%s recording_id=%s -> calling Recall",
+                # TRANSIENT: the recording often materializes on the bot object seconds after
+                # the webhook. Leave the job pending for the sweeper to retry — never brand the
+                # meeting failed over a race.
+                if job:
+                    job.status = "pending"
+                    job.error = "No recording on the bot object yet; will retry."
+                    db.commit()
+                log.info("create_transcript meeting_id=%s: no recording yet, left pending", meeting_id)
+                return
+
+            # FAST PATH: the bot transcribes in realtime, so the recording usually already
+            # carries a finished transcript — skip the async AssemblyAI job entirely.
+            bot = recall.get_bot(meeting.recall_bot_id) if meeting.recall_bot_id else {}
+            shortcut = _recording_transcript_shortcut(bot)
+            if shortcut.get("id"):
+                meeting.recall_transcript_id = shortcut["id"]
+                if job:
+                    job.status = "succeeded"
+                    job.error = None
+                db.commit()
+                log.info("create_transcript meeting_id=%s: realtime transcript %s already exists -> processing",
+                         meeting_id, shortcut["id"])
+                if enqueue_job(db, meeting_id, "process_transcript"):
+                    run_process_transcript(meeting_id)
+                return
+
+            log.info("create_transcript meeting_id=%s recording_id=%s -> calling Recall (async fallback)",
                      meeting_id, meeting.recall_recording_id)
             result = recall.create_transcript(meeting.recall_recording_id)
             log.info("create_transcript meeting_id=%s accepted by Recall transcript_id=%s",
@@ -342,3 +375,150 @@ def _record_failure(db, meeting_id: str, *, job_type: str, code: str, message: s
         job.status = "failed"
         job.error = message[:2000]
     db.commit()
+
+
+# ── Finalization + stuck-meeting sweeper ────────────────────────────────────────
+#
+# Webhooks are best-effort (deliveries fail, instances restart mid-task), so the pipeline can't
+# depend on them alone. finalize_meeting() reconciles ONE meeting against Recall's bot object and
+# advances it to wherever it should be; sweep_stuck_meetings() applies it to anything that has sat
+# in a non-terminal status too long. Both are idempotent and safe to run repeatedly.
+
+# Statuses that mean "work is (supposedly) still happening".
+ACTIVE_STATUSES = (
+    "bot_scheduled", "joining", "in_waiting_room", "recording",
+    "recording_complete", "transcribing", "generating_intelligence",
+)
+
+
+def finalize_meeting(meeting_id: str) -> None:
+    """Reconcile a meeting with Recall and advance it to its true state.
+
+    - transcript segments already stored → status ready.
+    - bot has a transcript (realtime or async) → process it now.
+    - bot has a recording but no transcript → start the async fallback.
+    - bot finished with NO recording at all → honest terminal state: ready with an explicit
+      no_recording note (the old behavior of concluding silent calls in seconds, restored).
+    """
+    settings = get_settings()
+    db = SessionLocal()
+    try:
+        meeting = db.get(Meeting, meeting_id)
+        if not meeting or not meeting.recall_bot_id:
+            return
+        if meeting.status in ("ready", "cancelled"):
+            return
+        if db.query(TranscriptSegment).filter(TranscriptSegment.meeting_id == meeting_id).count():
+            if meeting.status != "ready":
+                meeting.status = "ready"
+                db.commit()
+            return
+
+        recall = get_recall_service(settings.recall_api_key, settings.recall_region)
+        bot = recall.get_bot(meeting.recall_bot_id)
+        recordings = bot.get("recordings") or []
+
+        # Terminal bot state with nothing recorded → conclude honestly, don't spin forever.
+        if not recordings:
+            statuses = bot.get("status_changes") or []
+            last_code = (statuses[-1].get("code") if statuses else None) or ""
+            bot_finished = last_code in ("done", "fatal", "call_ended") or (
+                (bot.get("status") or {}).get("code") in ("done", "fatal")
+            )
+            # Meetings hard-failed by the old transient-race bug get healed to the honest
+            # empty state too; genuinely failed bots (fatal etc.) stay failed.
+            heal_failed = meeting.processing_error_code == "create_transcript_failed"
+            if bot_finished and (meeting.status != "failed" or heal_failed):
+                meeting.status = "ready"
+                meeting.processing_error_code = "no_recording"
+                meeting.processing_error_message = (
+                    "The call ended without a recording — nobody spoke, or recording never started."
+                )
+                db.commit()
+                log.info("finalize meeting_id=%s: no recording, concluded as ready/empty", meeting_id)
+            return
+
+        reconcile_recording(db, meeting, recall)
+        shortcut = _recording_transcript_shortcut(bot)
+
+        if shortcut.get("id") or meeting.recall_transcript_id:
+            if shortcut.get("id") and not meeting.recall_transcript_id:
+                meeting.recall_transcript_id = shortcut["id"]
+            meeting.status = "transcribing"
+            # Recover from an earlier transient failure and rerun.
+            if meeting.processing_error_code in ("create_transcript_failed", "transcript_processing_failed"):
+                meeting.processing_error_code = None
+                meeting.processing_error_message = None
+            db.commit()
+            enqueue_job(db, meeting_id, "process_transcript", force=True)
+            run_process_transcript(meeting_id)
+            return
+
+        # Recording exists but no transcript object yet → (re)start creation.
+        meeting.status = "transcribing"
+        db.commit()
+        enqueue_job(db, meeting_id, "create_transcript", force=True)
+        run_create_transcript(meeting_id)
+    except Exception as exc:  # noqa: BLE001 — the sweeper will come back around
+        log.warning("finalize meeting_id=%s errored (will retry on next sweep): %s", meeting_id, exc)
+    finally:
+        db.close()
+
+
+def sweep_stuck_meetings(stale_after_s: int = 90, limit: int = 20) -> int:
+    """Advance meetings stuck in non-terminal states; recover jobs orphaned by restarts.
+
+    Runs periodically from the app lifespan. Returns how many meetings were reconciled.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    settings = get_settings()
+    if not settings.recall_api_key:
+        return 0
+    now = datetime.now(timezone.utc)
+    db = SessionLocal()
+    try:
+        # Jobs left 'running' by a crashed/restarted instance → back to pending.
+        stale_jobs = (
+            db.query(Job)
+            .filter(Job.status == "running", Job.updated_at < now - timedelta(minutes=5))
+            .all()
+        )
+        for j in stale_jobs:
+            j.status = "pending"
+            j.error = "Reset by sweeper: instance likely restarted mid-run."
+        if stale_jobs:
+            db.commit()
+
+        stuck = (
+            db.query(Meeting.id)
+            .filter(
+                Meeting.status.in_(ACTIVE_STATUSES),
+                Meeting.recall_bot_id.isnot(None),
+                Meeting.updated_at < now - timedelta(seconds=stale_after_s),
+            )
+            .order_by(Meeting.updated_at)
+            .limit(limit)
+            .all()
+        )
+        # Heal meetings previously hard-failed by the old transient-race bug.
+        healable = (
+            db.query(Meeting.id)
+            .filter(
+                Meeting.status == "failed",
+                Meeting.processing_error_code == "create_transcript_failed",
+                Meeting.processing_error_message.ilike("%No recording found%"),
+                Meeting.recall_bot_id.isnot(None),
+            )
+            .limit(5)
+            .all()
+        )
+        ids = [m.id for m in stuck] + [m.id for m in healable]
+    finally:
+        db.close()
+
+    for mid in ids:
+        finalize_meeting(mid)
+    if ids:
+        log.info("sweeper reconciled %d meeting(s)", len(ids))
+    return len(ids)

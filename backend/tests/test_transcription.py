@@ -158,9 +158,38 @@ def _seed_meeting(SessionFactory, **fields):
     return mid
 
 
-def test_run_create_transcript_uses_recording_id(SessionFactory, monkeypatch):
+def test_run_create_transcript_fast_paths_realtime_transcript(SessionFactory, monkeypatch):
+    """The bot transcribes in realtime, so when the recording already carries a transcript the
+    job must SKIP the async AssemblyAI call and process the existing transcript immediately."""
     mid = _seed_meeting(SessionFactory, recall_recording_id="rec_5", recall_bot_id="bot_1")
     fake = _FakeRecall()
+    monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
+    monkeypatch.setattr(tx, "get_recall_service", lambda k, r: fake)
+    s = SessionFactory(); s.add(Job(meeting_id=mid, type="create_transcript", status="pending")); s.commit(); s.close()
+
+    run_create_transcript(mid)
+
+    assert fake.created_for is None  # no async job started — realtime transcript used
+    s = SessionFactory()
+    m = s.get(Meeting, mid)
+    assert m.recall_transcript_id == "tr_from_bot"
+    assert m.status == "ready"  # processed straight through
+    assert s.query(Job).filter_by(meeting_id=mid, type="create_transcript").one().status == "succeeded"
+    s.close()
+
+
+class _FakeRecallNoRealtime(_FakeRecall):
+    """A bot whose recording has no realtime transcript — the async fallback must run."""
+
+    def get_bot(self, bot_id):
+        bot = super().get_bot(bot_id)
+        bot["recordings"][0]["media_shortcuts"] = {}
+        return bot
+
+
+def test_run_create_transcript_falls_back_to_async(SessionFactory, monkeypatch):
+    mid = _seed_meeting(SessionFactory, recall_recording_id="rec_5", recall_bot_id="bot_1")
+    fake = _FakeRecallNoRealtime()
     monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
     monkeypatch.setattr(tx, "get_recall_service", lambda k, r: fake)
     s = SessionFactory(); s.add(Job(meeting_id=mid, type="create_transcript", status="pending")); s.commit(); s.close()
@@ -170,6 +199,29 @@ def test_run_create_transcript_uses_recording_id(SessionFactory, monkeypatch):
     assert fake.created_for == "rec_5"  # recording id, NOT the bot id
     s = SessionFactory()
     assert s.query(Job).filter_by(meeting_id=mid, type="create_transcript").one().status == "succeeded"
+    s.close()
+
+
+class _FakeRecallNoRecordings(_FakeRecall):
+    def get_bot(self, bot_id):
+        return {"id": bot_id, "recordings": []}
+
+
+def test_run_create_transcript_no_recording_is_transient_not_failure(SessionFactory, monkeypatch):
+    """A bot object briefly without recordings is a race, not a failure: the meeting must NOT be
+    marked failed and the job must return to pending for the sweeper to retry."""
+    mid = _seed_meeting(SessionFactory, recall_bot_id="bot_9", recall_recording_id=None)
+    fake = _FakeRecallNoRecordings()
+    monkeypatch.setattr(tx, "SessionLocal", SessionFactory)
+    monkeypatch.setattr(tx, "get_recall_service", lambda k, r: fake)
+    s = SessionFactory(); s.add(Job(meeting_id=mid, type="create_transcript", status="pending")); s.commit(); s.close()
+
+    tx.run_create_transcript(mid)
+
+    s = SessionFactory()
+    m = s.get(Meeting, mid)
+    assert m.status != "failed"
+    assert s.query(Job).filter_by(meeting_id=mid, type="create_transcript").one().status == "pending"
     s.close()
 
 
@@ -189,8 +241,10 @@ def test_run_create_transcript_reconciles_missing_recording_id(SessionFactory, m
     assert m.recall_recording_id == "rec_from_bot"
     assert m.started_at is not None and m.ended_at is not None
     assert m.duration_seconds == 23  # 06:56:12.97 -> 06:56:36.48
+    # Realtime transcript on the bot → fast path processed it instead of a new async job.
+    assert m.recall_transcript_id == "tr_from_bot"
     s.close()
-    assert fake.created_for == "rec_from_bot"
+    assert fake.created_for is None
 
 
 def test_run_process_transcript_reconciles_missing_transcript_id(SessionFactory, monkeypatch):
