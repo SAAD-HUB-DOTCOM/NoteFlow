@@ -13,7 +13,6 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
 } from "@/components/icons";
-import { nameFromEmail } from "@/lib/user";
 
 type SvgProps = React.SVGProps<SVGSVGElement>;
 
@@ -61,20 +60,20 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 export function Sidebar({
+  name,
   email,
   mobileOpen,
   onClose,
 }: {
+  name: string | null;
   email: string | null;
   mobileOpen: boolean;
   onClose: () => void;
 }) {
   const pathname = usePathname();
-  const name = nameFromEmail(email);
 
   return (
     <>
-      {/* Mobile backdrop */}
       <div
         aria-hidden="true"
         onClick={onClose}
@@ -110,7 +109,7 @@ export function Sidebar({
                         href={href}
                         onClick={onClose}
                         aria-current={active ? "page" : undefined}
-                        className="nf-nav text-sm font-medium"
+                        className={`nf-nav text-[13.5px] ${active ? "font-medium" : "font-normal nf-t2"}`}
                       >
                         <Icon className="h-[18px] w-[18px] shrink-0" />
                         {label}
@@ -123,34 +122,32 @@ export function Sidebar({
           ))}
         </nav>
 
-        {/* Understated upgrade */}
-        <div className="px-3 pb-2">
+        {/* Bottom region — Upgrade + account grouped by a single hairline, not separate cards */}
+        <div className="mt-auto border-t px-3 py-3" style={{ borderColor: "var(--nf-hairline)" }}>
           <Link
             href="/app/settings"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors hover:bg-[var(--nf-surface-hover)]"
-            style={{ borderColor: "var(--nf-border)" }}
+            className="mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-[var(--nf-surface-hover)]"
           >
-            <SparkleIcon className="h-4 w-4 shrink-0 nf-t2" />
+            <SparkleIcon className="h-4 w-4 shrink-0 nf-tm" />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-medium nf-t">Upgrade to Pro</span>
-              <span className="block truncate text-[11px] nf-tm">More history and team search</span>
+              <span className="block text-[13px] font-medium nf-t2">Upgrade to Pro</span>
+              <span className="block truncate text-[11px] nf-tf">More history &amp; team search</span>
             </span>
-            <ChevronRightIcon className="h-4 w-4 shrink-0 nf-tf" />
+            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 nf-tf" />
           </Link>
+          <AccountBlock name={name} email={email} />
         </div>
-
-        {/* Account */}
-        <AccountBlock name={name} email={email} />
       </aside>
     </>
   );
 }
 
-function AccountBlock({ name, email }: { name: string; email: string | null }) {
+function AccountBlock({ name, email }: { name: string | null; email: string | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const initial = (email?.trim()?.[0] ?? "N").toUpperCase();
+  const primary = name ?? email ?? "Your account";
+  const initial = (name?.trim()?.[0] ?? email?.trim()?.[0] ?? "N").toUpperCase();
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -168,11 +165,11 @@ function AccountBlock({ name, email }: { name: string; email: string | null }) {
   }, []);
 
   return (
-    <div ref={ref} className="relative border-t p-3" style={{ borderColor: "var(--nf-hairline)" }}>
+    <div ref={ref} className="relative">
       {open && (
         <div
           role="menu"
-          className="absolute bottom-[68px] left-3 right-3 z-50 overflow-hidden rounded-xl border shadow-xl shadow-black/50"
+          className="absolute bottom-[52px] left-0 right-0 z-50 overflow-hidden rounded-xl border shadow-xl shadow-black/50"
           style={{ background: "var(--nf-surface-2)", borderColor: "var(--nf-border)" }}
         >
           <form action="/auth/signout" method="post">
@@ -187,7 +184,7 @@ function AccountBlock({ name, email }: { name: string; email: string | null }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-[var(--nf-surface-hover)]"
+        className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-[var(--nf-surface-hover)]"
       >
         <span
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] font-semibold nf-t"
@@ -196,8 +193,8 @@ function AccountBlock({ name, email }: { name: string; email: string | null }) {
           {initial}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium nf-t">{name}</span>
-          <span className="block truncate text-[11px] nf-tm">{email ?? "your account"}</span>
+          <span className="block truncate text-[13px] font-medium nf-t">{primary}</span>
+          {name && email && <span className="block truncate text-[11px] nf-tm">{email}</span>}
         </span>
         <ChevronUpIcon className="h-4 w-4 shrink-0 nf-tf" />
       </button>

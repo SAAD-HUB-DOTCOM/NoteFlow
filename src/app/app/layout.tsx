@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerUser } from "@/lib/auth";
+import { fullDisplayName } from "@/lib/user";
 import { RealtimeProvider } from "@/components/app/RealtimeProvider";
 import { AppShell } from "@/components/app/shell/AppShell";
 
@@ -14,7 +15,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <RealtimeProvider>
-      <AppShell email={user.email ?? null}>{children}</AppShell>
+      <AppShell name={fullDisplayName(user)} email={user.email ?? null}>
+        {children}
+      </AppShell>
     </RealtimeProvider>
   );
 }

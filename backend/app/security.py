@@ -1,14 +1,3 @@
-"""Supabase JWT verification.
-
-The user identity always comes from the verified token, never the request body (note-flow.md §8).
-
-Supabase projects created after the Signing Keys rollout issue **asymmetric** access tokens
-(ES256/RS256), verified against the project JWKS at:
-    {SUPABASE_URL}/auth/v1/.well-known/jwks.json
-using the token's `kid`. Legacy HS256 (shared `SUPABASE_JWT_SECRET`) is kept as a fallback for
-older projects. Signature, expiry, issuer, and audience are all validated; unsigned claims are
-never trusted. JWKS keys are cached (one client per URL) rather than fetched per request.
-"""
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -33,7 +22,6 @@ class CurrentUser:
 
 @lru_cache(maxsize=8)
 def _jwk_client(jwks_url: str) -> PyJWKClient:
-    # PyJWKClient caches fetched keys (lifespan) — one client reused per URL avoids per-request fetches.
     return PyJWKClient(jwks_url, cache_keys=True, lifespan=600)
 
 
@@ -76,12 +64,12 @@ def get_current_user(
     try:
         if alg in ASYMMETRIC_ALGS:
             if not settings.supabase_url:
-                raise _not_configured()  # JWKS needs the project URL
+                raise _not_configured()  
             signing_key = _jwk_client(_jwks_url(settings)).get_signing_key_from_jwt(token)
             claims = jwt.decode(
                 token,
                 signing_key.key,
-                algorithms=ASYMMETRIC_ALGS,  # fixed allowlist — never trust header alg for the family
+                algorithms=ASYMMETRIC_ALGS,  
                 audience=audience,
                 issuer=issuer,
                 options={"require": ["exp"]},
@@ -100,7 +88,6 @@ def get_current_user(
         else:
             raise _unauthorized("Unsupported token algorithm.")
     except PyJWKClientError as exc:
-        # Unknown kid, or JWKS fetch/parse failure — can't verify, so reject.
         raise _unauthorized("Token key not recognized.") from exc
     except InvalidTokenError as exc:
         raise _unauthorized() from exc

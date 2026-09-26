@@ -1,9 +1,4 @@
-"""Phase 5 — real Groq meeting intelligence from the persisted transcript.
 
-Segments are labelled [S1], [S2]… in the prompt (never the raw uuids, which the model would
-hallucinate); the model cites those short refs, and we map them back to real segment ids and drop
-any it invents. Idempotent: one row per meeting (PK), skipped if present unless force=True.
-"""
 from __future__ import annotations
 
 import json
@@ -173,7 +168,6 @@ def answer_question(meeting_id: str, question: str) -> dict | None:
         raw = _call_ask_groq("\n".join(lines), question)
         answer = str(raw.get("answer") or "").strip() or _NOT_FOUND
         citations = _valid_refs(raw.get("citations"), ref_map)
-        # If the model admits it couldn't find the answer, citations are meaningless — drop them.
         if answer == _NOT_FOUND:
             citations = []
         return {"answer": answer, "citations": citations}
@@ -181,7 +175,6 @@ def answer_question(meeting_id: str, question: str) -> dict | None:
         db.close()
 
 
-# ── Cross-meeting Ask (account-level dashboard) ─────────────────────────────────
 
 _ASK_ALL_SYSTEM = (
     "You answer questions across a user's OWN recorded meetings using ONLY the provided transcripts. "
@@ -195,7 +188,6 @@ _ASK_ALL_SYSTEM = (
 )
 
 _NOT_FOUND_ALL = "I couldn't find that across your meetings."
-# Bound the prompt so a large history can't blow the context window (MVP: no embeddings).
 _ASK_ALL_CHAR_BUDGET = 80_000
 
 
@@ -270,7 +262,6 @@ def answer_across_meetings(owner_user_id: str, question: str) -> dict:
                     "start": seg.start_ms / 1000.0,
                 }))
             block = "\n".join(lines)
-            # Always include at least the newest meeting; stop before exceeding the budget after that.
             if blocks and chars + len(block) > _ASK_ALL_CHAR_BUDGET:
                 counter -= len(local)
                 truncated = True
@@ -320,7 +311,7 @@ def generate_intelligence(meeting_id: str, *, force: bool = False) -> bool:
         text, ref_map = _serialize(segments)
         try:
             raw = _call_groq(text)
-        except Exception as exc:  # noqa: BLE001 — never fake intelligence
+        except Exception as exc:  
             log.exception("intelligence meeting_id=%s Groq FAILED: %s", meeting_id, exc)
             return False
         content = _validate(raw, ref_map)

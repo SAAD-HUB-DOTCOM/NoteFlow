@@ -10,9 +10,11 @@ import { AppTopbar } from "@/components/app/shell/AppTopbar";
  * `.nf-app` scopes the restrained --nf-* material to everything inside (REDESIGN.md §4–§5).
  */
 export function AppShell({
+  name,
   email,
   children,
 }: {
+  name: string | null;
   email: string | null;
   children: React.ReactNode;
 }) {
@@ -20,7 +22,7 @@ export function AppShell({
 
   return (
     <div className="nf-app flex h-screen overflow-hidden">
-      <Sidebar email={email} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <Sidebar name={name} email={email} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopbar onMenu={() => setMobileOpen(true)} />
         <div className="min-h-0 flex-1 overflow-y-auto">

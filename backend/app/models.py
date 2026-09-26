@@ -1,9 +1,3 @@
-"""SQLAlchemy models — Phase 1 spine (auth/meeting/jobs/webhooks).
-
-Transcript segments, action items, summaries, participants, highlights, shares are added in
-their own phases (§7); the schema here is the foundation the capture slice builds on. Meeting
-uses a real status lifecycle string (§6), never a boolean.
-"""
 import uuid
 from datetime import datetime
 
@@ -37,7 +31,6 @@ class TimestampMixin:
 
 class Profile(TimestampMixin, Base):
     __tablename__ = "profiles"
-    # Equals auth.users.id (Supabase). Set on first authenticated request.
     id: Mapped[str] = mapped_column(String, primary_key=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -53,7 +46,6 @@ class UserPreferences(TimestampMixin, Base):
     recording_notice_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-# Normalized meeting lifecycle (§6). Adapt names to Recall's real events as needed.
 MEETING_STATUSES = (
     "draft", "scheduled", "bot_scheduled", "joining", "in_waiting_room", "recording",
     "recording_complete", "transcribing", "generating_intelligence", "ready", "failed", "cancelled",
@@ -65,8 +57,8 @@ class Meeting(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     owner_user_id: Mapped[str] = mapped_column(String, index=True)
     title: Mapped[str | None] = mapped_column(String, nullable=True)
-    source: Mapped[str] = mapped_column(String, default="manual")  # manual | calendar
-    provider: Mapped[str | None] = mapped_column(String, nullable=True)  # google_meet|zoom|teams|unknown
+    source: Mapped[str] = mapped_column(String, default="manual") 
+    provider: Mapped[str | None] = mapped_column(String, nullable=True)  
     meeting_url: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="draft", index=True)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -78,7 +70,6 @@ class Meeting(TimestampMixin, Base):
     recall_transcript_id: Mapped[str | None] = mapped_column(String, nullable=True)
     processing_error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     processing_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Public share: an unguessable token; null = not shared. Set when the owner shares a meeting.
     share_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
@@ -88,17 +79,12 @@ class Meeting(TimestampMixin, Base):
 
 
 class Job(TimestampMixin, Base):
-    """Async work tracked for observability (FastAPI BackgroundTasks execute these tonight).
-
-    Unique (meeting_id, type): at most one job of a kind per meeting — the idempotency guard so
-    duplicate webhook deliveries can't start duplicate transcript work.
-    """
     __tablename__ = "jobs"
     __table_args__ = (UniqueConstraint("meeting_id", "type", name="uq_job_meeting_type"),)
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     meeting_id: Mapped[str | None] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=True)
-    type: Mapped[str] = mapped_column(String)  # e.g. create_final_transcript, generate_intelligence
-    status: Mapped[str] = mapped_column(String, default="pending")  # pending|running|succeeded|failed
+    type: Mapped[str] = mapped_column(String)  
+    status: Mapped[str] = mapped_column(String, default="pending") 
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -126,8 +112,7 @@ class TranscriptSegment(TimestampMixin, Base):
     start_ms: Mapped[int] = mapped_column(Integer)
     end_ms: Mapped[int] = mapped_column(Integer)
     sequence: Mapped[int] = mapped_column(Integer)
-    source: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. assembly_ai_async
-
+    source: Mapped[str | None] = mapped_column(String, nullable=True)  
     meeting: Mapped["Meeting"] = relationship(back_populates="transcript_segments")
 
 

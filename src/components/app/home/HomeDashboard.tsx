@@ -143,7 +143,7 @@ export function HomeDashboard() {
         <RecentConversations meetings={recent} empty={meetings.length === 0} />
         <HomeAsk hasMeetings={meetings.length > 0} />
       </div>
-      <div className="flex min-w-0 flex-col gap-8">
+      <div className="flex min-w-0 flex-col gap-7">
         <TodayRail />
         <ActionItemsPreview items={actionItems} />
       </div>
@@ -152,6 +152,44 @@ export function HomeDashboard() {
 }
 
 /* ------------------------------------------------------------- next meeting */
+
+/** Subtle monochrome capture waveform — varied amplitude + rhythm so it reads as real speech
+ *  rather than a repeating equalizer. Deterministic (no per-render randomness); reduced-motion
+ *  falls back to a static silhouette via the .nf-eq-bar media query. */
+function LiveWaveform() {
+  const bars = 64;
+  const rand = (n: number) => {
+    const x = Math.sin(n * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  return (
+    <div className="mt-5 flex h-9 items-center gap-[3px]" aria-hidden="true">
+      {Array.from({ length: bars }).map((_, i) => {
+        const jitter = rand(i * 1.7 + 3);
+        // Slow speech envelope (bursts of loud + quiet) blended with per-bar jitter.
+        const envelope = Math.abs(Math.sin(i * 0.26) * 0.6 + Math.sin(i * 0.11 + 1.5) * 0.4);
+        const height = 12 + Math.round((jitter * 0.55 + envelope * 0.45) * 86);
+        const dur = 0.7 + rand(i * 2.3 + 9) * 1.0; // 0.7–1.7s, varied rhythm
+        const delay = rand(i * 3.1 + 1) * 1.3; // 0–1.3s
+        const opacity = 0.28 + (height / 100) * 0.42;
+        return (
+          <span
+            key={i}
+            className="nf-eq-bar flex-1 rounded-full"
+            style={{
+              maxWidth: 3,
+              height: `${height}%`,
+              background: "#fff",
+              opacity,
+              animationDuration: `${dur.toFixed(2)}s`,
+              animationDelay: `${delay.toFixed(2)}s`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 function NextMeeting({ meeting, isLive }: { meeting: MeetingDTO | null; isLive: boolean }) {
   if (!meeting) {
@@ -172,26 +210,26 @@ function NextMeeting({ meeting, isLive }: { meeting: MeetingDTO | null; isLive: 
   const title = meeting.title || "Untitled meeting";
 
   return (
-    <section className="nf-card p-5 sm:p-6">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        <div
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-xl"
-          style={{ background: "var(--nf-surface-3)", border: "1px solid var(--nf-border)" }}
-        >
-          <CalendarIcon className="h-6 w-6 nf-t2" />
-        </div>
+    <section className="nf-elevated relative overflow-hidden p-5 sm:p-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] nf-tf">
+            <span className="text-[11px] font-medium uppercase tracking-[0.13em] nf-t2">
               {isLive ? "Active capture" : "Next meeting"}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs nf-t2">
-              <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "animate-pulse" : ""}`} style={{ background: isLive ? "var(--nf-failed)" : "var(--nf-text-secondary)" }} />
-              {isLive ? "Recording now" : meeting.started_at ? untilLabel(meeting.started_at) : "Scheduled"}
-            </span>
+            {isLive ? (
+              <span className="inline-flex items-center gap-1.5 text-xs nf-t2">
+                <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--nf-failed)" }} />
+                Recording
+              </span>
+            ) : (
+              meeting.started_at && (
+                <span className="text-xs nf-tm">{untilLabel(meeting.started_at)}</span>
+              )
+            )}
           </div>
-          <h2 className="mt-1 truncate text-xl font-medium nf-t">{title}</h2>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm nf-tm">
+          <h2 className="mt-2 truncate text-2xl font-medium tracking-[-0.02em] nf-t">{title}</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm nf-tm">
             {time && (
               <span className="inline-flex items-center gap-1.5"><ClockIcon className="h-4 w-4" />{time}</span>
             )}
@@ -201,7 +239,7 @@ function NextMeeting({ meeting, isLive }: { meeting: MeetingDTO | null; isLive: 
         <div className="flex shrink-0 items-center gap-2">
           {isLive ? (
             <Link href={`/app/meetings/${meeting.id}`} className="nf-btn-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm">
-              Open meeting
+              <PlayIcon className="h-4 w-4" /> Open meeting
             </Link>
           ) : (
             <>
@@ -217,6 +255,7 @@ function NextMeeting({ meeting, isLive }: { meeting: MeetingDTO | null; isLive: 
           )}
         </div>
       </div>
+      {isLive && <LiveWaveform />}
     </section>
   );
 }
@@ -246,19 +285,22 @@ function RecentConversations({ meetings, empty }: { meetings: MeetingDTO[]; empt
             return (
               <li key={m.id}>
                 {i > 0 && <div className="border-t" style={{ borderColor: "var(--nf-hairline)" }} />}
-                <Link href={`/app/meetings/${m.id}`} className="nf-row group flex items-center gap-4 rounded-xl px-3 py-3">
-                  <ConversationThumb seed={m.id} className="h-11 w-16" />
+                <Link href={`/app/meetings/${m.id}`} className="nf-row group flex items-center gap-4 rounded-xl px-3 py-4">
+                  <ConversationThumb seed={m.id} className="h-12 w-[72px]" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.95rem] font-medium nf-t">{m.title || "Untitled meeting"}</p>
-                    <p className="mt-0.5 truncate text-xs nf-tm">
+                    <p className="mt-1 truncate text-xs nf-tm">
                       {when}
                       {m.duration_seconds != null && ` · ${formatDuration(m.duration_seconds)}`}
                     </p>
                   </div>
-                  <span className="hidden shrink-0 text-xs nf-t2 sm:inline">{statusText(m.status)}</span>
+                  <span className="hidden shrink-0 text-[11.5px] nf-t2 transition-opacity group-hover:opacity-0 sm:inline">
+                    {statusText(m.status)}
+                  </span>
                   <span
                     className="grid h-8 w-8 shrink-0 place-items-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
                     style={{ background: "var(--nf-surface-3)", border: "1px solid var(--nf-border)" }}
+                    aria-hidden="true"
                   >
                     <PlayIcon className="h-3.5 w-3.5 nf-t" />
                   </span>
@@ -275,15 +317,24 @@ function RecentConversations({ meetings, empty }: { meetings: MeetingDTO[]; empt
 /* ----------------------------------------------------------------- today rail */
 
 function TodayRail() {
-  // No calendar integration exists yet — honest coming-state instead of fabricated times.
+  // No calendar integration exists yet — a compact, quiet prompt rather than a big empty card.
   return (
     <section>
       <SectionHeading title="Today" />
-      <div className="nf-card px-5 py-6">
-        <p className="text-sm nf-t2">No calendar connected</p>
-        <p className="mt-1.5 text-sm leading-relaxed nf-tm">
-          Connect a calendar to see your schedule beside your meetings. Until then, capture any call by pasting its link.
-        </p>
+      <div
+        className="mt-2.5 flex items-center gap-3 rounded-xl px-3.5 py-3.5"
+        style={{ background: "var(--nf-surface-1)", border: "1px solid var(--nf-border)" }}
+      >
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+          style={{ background: "var(--nf-surface-3)", border: "1px solid var(--nf-border)" }}
+        >
+          <CalendarIcon className="h-4 w-4 nf-t2" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium nf-t2">Connect a calendar</p>
+          <p className="mt-0.5 text-[11px] nf-tm">See your schedule beside your meetings.</p>
+        </div>
       </div>
     </section>
   );
@@ -297,9 +348,14 @@ function ActionItemsPreview({ items }: { items: ActionItemDTO[] }) {
     <section>
       <SectionHeading title="Action items" href={items.length ? "/app/action-items" : undefined} />
       {shown.length === 0 ? (
-        <div className="nf-card px-5 py-6">
-          <p className="text-sm nf-t2">No action items yet</p>
-          <p className="mt-1.5 text-sm nf-tm">Follow-ups NoteFlow hears in your meetings will collect here.</p>
+        <div
+          className="mt-2.5 flex items-center gap-3 rounded-xl px-3.5 py-3.5"
+          style={{ background: "var(--nf-surface-1)", border: "1px solid var(--nf-border)" }}
+        >
+          <span className="h-4 w-4 shrink-0 rounded-full" style={{ border: "1.5px solid var(--nf-text-muted)" }} aria-hidden="true" />
+          <p className="text-[13px] nf-t2">
+            No action items yet<span className="nf-tm"> · follow-ups will collect here</span>
+          </p>
         </div>
       ) : (
         <ul className="mt-3 flex flex-col">
@@ -352,18 +408,16 @@ function HomeAsk({ hasMeetings }: { hasMeetings: boolean }) {
   }, [loading]);
 
   return (
-    <section className="nf-card p-5 sm:p-6">
-      <div className="flex items-center gap-2">
-        <SparkleIcon className="h-4 w-4 nf-t2" />
-        <h2 className="text-[15px] font-medium nf-t">Ask NoteFlow</h2>
-      </div>
+    <section>
+      <p className="text-[11px] font-medium uppercase tracking-[0.13em] nf-tf">Ask NoteFlow</p>
+      <h2 className="mt-2 text-xl font-medium tracking-[-0.02em] nf-t">Ask anything you&apos;ve discussed.</h2>
       <p className="mt-1.5 text-sm nf-tm">
         {hasMeetings
-          ? "Ask anything you've discussed. Answers link back to the exact moment."
-          : "Once you've recorded a meeting, ask it anything and get answers with the exact moment they were said."}
+          ? "Answers link back to the exact moment they were said."
+          : "Once you've recorded a meeting, ask it anything and jump to the exact moment."}
       </p>
 
-      <div className="nf-input mt-4 flex items-center gap-2.5 px-3.5 py-2.5">
+      <div className="nf-input mt-4 flex items-center gap-2.5 px-4 py-3">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -377,7 +431,7 @@ function HomeAsk({ hasMeetings }: { hasMeetings: boolean }) {
           type="button"
           onClick={() => void submit(q)}
           disabled={!hasMeetings || loading || !q.trim()}
-          className="nf-btn-secondary shrink-0 px-3 py-1.5 text-xs disabled:opacity-50"
+          className="nf-btn-primary shrink-0 px-3.5 py-1.5 text-xs disabled:opacity-50"
         >
           {loading ? "Asking…" : "Ask"}
         </button>
@@ -390,8 +444,8 @@ function HomeAsk({ hasMeetings }: { hasMeetings: boolean }) {
               key={p}
               type="button"
               onClick={() => void submit(p)}
-              className="rounded-full px-3 py-1.5 text-xs nf-t2 transition-colors hover:text-[color:var(--nf-text)]"
-              style={{ border: "1px solid var(--nf-border)" }}
+              className="rounded-lg px-2.5 py-1.5 text-xs nf-t2 transition-colors hover:text-[color:var(--nf-text)]"
+              style={{ border: "1px solid var(--nf-hairline)" }}
             >
               {p}
             </button>

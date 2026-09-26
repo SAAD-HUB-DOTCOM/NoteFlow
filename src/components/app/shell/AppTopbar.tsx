@@ -23,26 +23,25 @@ function MenuIcon(props: React.SVGProps<SVGSVGElement>) {
  */
 export function AppTopbar({ onMenu }: { onMenu: () => void }) {
   return (
-    <header
-      className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 px-4 sm:px-6"
-      style={{ background: "var(--nf-bg)" }}
-    >
-      <button
-        type="button"
-        onClick={onMenu}
-        aria-label="Open navigation"
-        className="nf-btn-ghost grid h-9 w-9 place-items-center lg:hidden"
-      >
-        <MenuIcon className="h-5 w-5" />
-      </button>
+    <header className="sticky top-0 z-30 shrink-0" style={{ background: "var(--nf-bg)" }}>
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-5 sm:px-8 lg:px-10">
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="Open navigation"
+          className="nf-btn-ghost grid h-9 w-9 shrink-0 place-items-center lg:hidden"
+        >
+          <MenuIcon className="h-5 w-5" />
+        </button>
 
-      <GlobalAsk />
+        <GlobalAsk />
 
-      <div className="ml-auto flex items-center gap-2">
-        <RecordMeetingButton
-          label="Capture"
-          className="nf-btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 text-sm"
-        />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <RecordMeetingButton
+            label="Capture"
+            className="nf-btn-primary inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+          />
+        </div>
       </div>
     </header>
   );
@@ -98,8 +97,8 @@ function GlobalAsk() {
   }, [q, loading]);
 
   return (
-    <div ref={wrapRef} className="relative w-full max-w-[560px]">
-      <div className="nf-input flex items-center gap-2.5 px-3.5 py-2">
+    <div ref={wrapRef} className="relative w-full max-w-[680px]">
+      <div className="nf-input flex items-center gap-2.5 px-4 py-2.5">
         <SearchIcon className="h-4 w-4 shrink-0 nf-tm" />
         <input
           ref={inputRef}
