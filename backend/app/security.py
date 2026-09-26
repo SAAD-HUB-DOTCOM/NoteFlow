@@ -1,16 +1,12 @@
 from dataclasses import dataclass
 from functools import lru_cache
-
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
-
 from app.config import Settings, get_settings
-
 bearer = HTTPBearer(auto_error=True)
-
 ASYMMETRIC_ALGS = ["RS256", "ES256"]
 
 
@@ -38,12 +34,8 @@ def _not_configured() -> HTTPException:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="Auth is not configured.",
     )
-
-
 def _unauthorized(detail: str = "Invalid or expired token.") -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
-
-
 def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
     settings: Settings = Depends(get_settings),
