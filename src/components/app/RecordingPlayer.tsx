@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { apiFetch, ApiError, type RecordingDTO } from "@/lib/api";
+import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { formatTimestamp } from "@/lib/format";
 import { PlayIcon, PauseIcon, MicIcon } from "@/components/icons";
 
@@ -110,6 +111,8 @@ export const RecordingPlayer = forwardRef<
   const [showVideo, setShowVideo] = useState(false);
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const refetchedOnError = useRef(false);
+  const { status: rtStatus, onMeetingChange } = useMeetingsRealtime();
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -122,11 +125,26 @@ export const RecordingPlayer = forwardRef<
   }, [meetingId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Socket-driven readiness: while the recording isn't ready yet, refetch whenever the meeting
+  // row changes. The backend commits a `meetings` update at `recording.done` and at every status
+  // transition, each firing the Supabase Realtime broadcast — so playback appears the moment the
+  // recording finalizes, with no polling.
   useEffect(() => {
-    if (rec?.status !== "processing") return;
+    if (rec && rec.status !== "processing") return; // terminal (ready/unavailable) → stop listening
+    const unsub = onMeetingChange(() => {
+      if (debounce.current) clearTimeout(debounce.current);
+      debounce.current = setTimeout(() => void load(), 300);
+    });
+    return () => { if (debounce.current) clearTimeout(debounce.current); unsub(); };
+  }, [rec?.status, onMeetingChange, load]);
+
+  // Fallback poll ONLY when the realtime channel is disconnected (mirrors the workspace).
+  useEffect(() => {
+    if (rec?.status !== "processing" || rtStatus === "connected") return;
     const t = setInterval(() => void load(), 15_000);
     return () => clearInterval(t);
-  }, [rec?.status, load]);
+  }, [rec?.status, rtStatus, load]);
 
   useImperativeHandle(ref, () => ({
     seekTo: (seconds: number) => {

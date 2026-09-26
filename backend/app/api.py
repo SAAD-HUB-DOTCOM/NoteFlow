@@ -28,6 +28,7 @@ from app.schemas import (
     LinkParticipantIn,
     MeetingIntelligenceOut,
     MeetingOut,
+    MeetingParticipantOut,
     MeetingTranscriptOut,
     MeOut,
     MeUpdate,
@@ -609,6 +610,32 @@ def _person_detail(db: Session, user: CurrentUser, person: Person) -> PersonDeta
         last_conversation_at=last_at,
         meetings=[PersonMeetingOut.model_validate(m) for m in meetings],
     )
+
+
+@router.get("/meetings/{meeting_id}/participants", response_model=list[MeetingParticipantOut], tags=["people"])
+def get_meeting_participants(
+    meeting_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[MeetingParticipantOut]:
+    """Observed participants for a meeting (owner-scoped), each with whether it's linked to a
+    Person. This is the discovery contract the 'Identify participant → Person' UI needs."""
+    try:
+        rows = people_service.list_meeting_participants(db, user.id, meeting_id)
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    return [
+        MeetingParticipantOut(
+            id=p.id,
+            display_name=p.display_name,
+            speaker_label=p.speaker_label,
+            provider=p.provider,
+            email=p.email,
+            person_id=p.person_id,
+            person_display_name=(person.display_name if person else None),
+        )
+        for p, person in rows
+    ]
 
 
 @router.get("/people", response_model=list[PersonOut], tags=["people"])

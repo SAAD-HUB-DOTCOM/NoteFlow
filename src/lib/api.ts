@@ -194,6 +194,18 @@ export interface PersonDTO {
   last_conversation_at: string | null; // ISO, null only if somehow uncounted
 }
 
+/** An observed participant in one meeting + whether it's linked to a Person
+ *  (GET /api/v1/meetings/{id}/participants). Powers the "Identify" control. */
+export interface MeetingParticipantDTO {
+  id: string;
+  display_name: string | null;
+  speaker_label: string | null;
+  provider: string | null;
+  email: string | null;
+  person_id: string | null;
+  person_display_name: string | null;
+}
+
 export interface PersonMeetingDTO {
   id: string;
   title: string | null;

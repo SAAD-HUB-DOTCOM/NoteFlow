@@ -255,6 +255,21 @@ def list_people(db, owner_user_id: str):
     )
 
 
+def list_meeting_participants(db, owner_user_id: str, meeting_id: str):
+    """Observed participants for a meeting (owner-scoped), each paired with its resolved Person (or
+    None). Raises NotFound if the meeting isn't the owner's. Ordered by first-observed."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != owner_user_id:
+        raise NotFound("meeting")
+    rows = (
+        db.query(MeetingParticipant)
+        .filter_by(meeting_id=meeting_id)
+        .order_by(MeetingParticipant.created_at)
+        .all()
+    )
+    return [(p, db.get(Person, p.person_id) if p.person_id else None) for p in rows]
+
+
 def person_meetings(db, owner_user_id: str, person: Person):
     """Distinct meetings this person is linked to (owner-scoped), most recent first."""
     return (

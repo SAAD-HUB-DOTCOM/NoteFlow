@@ -279,6 +279,40 @@ def test_people_api_link_unlink_flow(client, SessionFactory):
     assert r2.status_code == 200 and r2.json()["conversation_count"] == 0
 
 
+def test_meeting_participants_api_lists_and_reflects_link(client, SessionFactory):
+    """The Identify UI's discovery endpoint: lists a meeting's observed participants (owner-scoped)
+    and reflects whether each is linked to a Person."""
+    s = SessionFactory()
+    m = _meeting(s, owner="user-1", title="Kickoff")
+    p1 = _participant(s, m, provider="google_meet", provider_participant_id="1", display_name="Saad Ullah")
+    _participant(s, m, provider="google_meet", provider_participant_id="2", display_name="Ali")
+    s.commit(); mid = m.id; part1 = p1.id; s.close()
+
+    r = client.get(f"/api/v1/meetings/{mid}/participants")
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 2 and all(row["person_id"] is None for row in data)
+
+    # Identify one participant → create+link a Person.
+    created = client.post("/api/v1/people", json={"meeting_participant_id": part1, "display_name": "Saad Ullah"})
+    assert created.status_code == 200
+
+    r2 = client.get(f"/api/v1/meetings/{mid}/participants")
+    linked = [row for row in r2.json() if row["person_id"]]
+    assert len(linked) == 1 and linked[0]["person_display_name"] == "Saad Ullah"
+    # …and the People directory now shows exactly that person with the meeting.
+    people_list = client.get("/api/v1/people").json()
+    assert len(people_list) == 1 and people_list[0]["conversation_count"] == 1
+
+
+def test_meeting_participants_api_owner_isolation(client, SessionFactory):
+    s = SessionFactory()
+    m = _meeting(s, owner="other-owner")
+    _participant(s, m, display_name="X")
+    s.commit(); mid = m.id; s.close()
+    assert client.get(f"/api/v1/meetings/{mid}/participants").status_code == 404
+
+
 def test_people_api_owner_isolation(client, SessionFactory):
     s = SessionFactory()
     m = _meeting(s, owner="someone-else")

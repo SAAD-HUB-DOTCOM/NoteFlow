@@ -160,6 +160,19 @@ class PersonDetailOut(PersonOut):
     meetings: list[PersonMeetingOut]
 
 
+class MeetingParticipantOut(BaseModel):
+    """An observed participant in one meeting, plus whether it's linked to a resolved Person.
+    The discovery contract the People 'Identify' UI needs (participant ids aren't otherwise
+    exposed to the browser)."""
+    id: str
+    display_name: str | None = None
+    speaker_label: str | None = None
+    provider: str | None = None
+    email: str | None = None
+    person_id: str | None = None
+    person_display_name: str | None = None
+
+
 class PersonCreateIn(BaseModel):
     meeting_participant_id: str | None = None
     display_name: str | None = None

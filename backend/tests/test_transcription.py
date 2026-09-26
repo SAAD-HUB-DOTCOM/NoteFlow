@@ -105,6 +105,48 @@ def test_extract_download_url():
     assert extract_download_url({}) is None
 
 
+def test_create_bot_requests_multilingual_streaming(monkeypatch):
+    """The Create Bot body must request multilingual realtime transcription: recallai_streaming
+    in prioritize_accuracy mode with language_code 'auto' (low_latency is English-only), and
+    per-participant diarization must stay enabled. No language is hard-coded."""
+    import app.services.recall as recallmod
+
+    captured: dict = {}
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"id": "bot_1"}
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, url, json=None, headers=None):
+            captured["url"] = url
+            captured["json"] = json
+            return _Resp()
+
+    monkeypatch.setattr(recallmod.httpx, "Client", _Client)
+    recallmod.RecallService("key", "ap-northeast-1").create_bot("https://meet.google.com/abc-defg-hij")
+
+    assert captured["url"].endswith("/bot/")
+    transcript = captured["json"]["recording_config"]["transcript"]
+    provider = transcript["provider"]
+    assert set(provider) == {"recallai_streaming"}  # provider IS recallai_streaming
+    assert provider["recallai_streaming"]["mode"] == "prioritize_accuracy"
+    assert provider["recallai_streaming"]["language_code"] == "auto"
+    assert transcript["diarization"]["use_separate_streams_when_available"] is True
+
+
 def test_create_transcript_requests_perfect_diarization(monkeypatch):
     """The async transcript request uses Perfect Diarization (real participant names), not
     assembly_ai_async.speaker_labels (generic A/B/C)."""
