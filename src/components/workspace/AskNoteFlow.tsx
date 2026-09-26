@@ -55,7 +55,7 @@ export function AskNoteFlow({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 text-sm text-muted">
-        <SparkleIcon className="h-4 w-4 text-primary" />
+        <SparkleIcon className="h-4 w-4 text-foreground/70" />
         Answers for seeded meetings are precomputed, not live AI.
       </div>
 
@@ -70,8 +70,8 @@ export function AskNoteFlow({
               </div>
             ) : (
               <div key={m.id} className="flex gap-3">
-                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
-                  <SparkleIcon className="h-4 w-4 text-primary" />
+                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/[0.07] ring-1 ring-white/10">
+                  <SparkleIcon className="h-4 w-4 text-foreground/80" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-relaxed text-foreground">{m.text}</p>
@@ -82,10 +82,10 @@ export function AskNoteFlow({
                           key={i}
                           type="button"
                           onClick={() => onSeekTo(c.start)}
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-foreground/80 transition-colors hover:border-primary/50 hover:text-foreground"
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
                         >
-                          <ClockIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
-                          <span className="font-mono tabular-nums text-primary">
+                          <ClockIcon className="h-3.5 w-3.5 shrink-0 text-foreground/70" />
+                          <span className="font-mono tabular-nums text-foreground">
                             {formatClock(c.start)}
                           </span>
                           <span className="truncate text-muted">{c.label}</span>
@@ -111,7 +111,7 @@ export function AskNoteFlow({
                 key={qa.id}
                 type="button"
                 onClick={() => askSeeded(qa)}
-                className="rounded-full border border-border bg-surface px-3.5 py-2 text-left text-sm text-foreground/85 transition-colors hover:border-primary/50 hover:bg-surface-hover"
+                className="rounded-full border border-border bg-surface px-3.5 py-2 text-left text-sm text-foreground/85 transition-colors hover:border-white/30 hover:bg-surface-hover"
               >
                 {qa.question}
               </button>
@@ -133,13 +133,13 @@ export function AskNoteFlow({
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything about this meeting…"
           aria-label="Ask NoteFlow"
-          className="w-full rounded-lg border border-border bg-surface py-3 pl-4 pr-12 text-sm text-foreground placeholder:text-muted transition-colors focus:border-primary focus:outline-none"
+          className="w-full rounded-lg border border-border bg-surface py-3 pl-4 pr-12 text-sm text-foreground placeholder:text-muted transition-colors focus:border-white/30 focus:outline-none"
         />
         <button
           type="submit"
           disabled={!input.trim()}
           aria-label="Send question"
-          className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md bg-primary text-white transition-colors hover:bg-primary-hover disabled:opacity-40 disabled:hover:bg-primary"
+          className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md bg-[#F2F2EF] text-[#0A0A0A] transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           <ArrowUpIcon className="h-4 w-4" />
         </button>

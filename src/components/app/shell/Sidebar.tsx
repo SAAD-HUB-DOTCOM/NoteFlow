@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useProfile } from "@/components/app/ProfileProvider";
 import {
   UsersIcon,
   BookmarkIcon,
@@ -60,13 +61,9 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 export function Sidebar({
-  name,
-  email,
   mobileOpen,
   onClose,
 }: {
-  name: string | null;
-  email: string | null;
   mobileOpen: boolean;
   onClose: () => void;
 }) {
@@ -136,18 +133,20 @@ export function Sidebar({
             </span>
             <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 nf-tf" />
           </Link>
-          <AccountBlock name={name} email={email} />
+          <AccountBlock />
         </div>
       </aside>
     </>
   );
 }
 
-function AccountBlock({ name, email }: { name: string | null; email: string | null }) {
+function AccountBlock() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const primary = name ?? email ?? "Your account";
-  const initial = (name?.trim()?.[0] ?? email?.trim()?.[0] ?? "N").toUpperCase();
+  // Shared NoteFlow profile — reflects a name edited in Settings without a reload.
+  const { displayName, email } = useProfile();
+  const primary = displayName;
+  const initial = (displayName.trim()[0] ?? email?.trim()?.[0] ?? "N").toUpperCase();
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -194,7 +193,9 @@ function AccountBlock({ name, email }: { name: string | null; email: string | nu
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-medium nf-t">{primary}</span>
-          {name && email && <span className="block truncate text-[11px] nf-tm">{email}</span>}
+          {email && email !== primary && (
+            <span className="block truncate text-[11px] nf-tm">{email}</span>
+          )}
         </span>
         <ChevronUpIcon className="h-4 w-4 shrink-0 nf-tf" />
       </button>

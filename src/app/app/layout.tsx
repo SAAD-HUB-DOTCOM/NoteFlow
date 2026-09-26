@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getServerUser } from "@/lib/auth";
-import { fullDisplayName } from "@/lib/user";
+import { fullDisplayName, sessionAvatarUrl } from "@/lib/user";
 import { RealtimeProvider } from "@/components/app/RealtimeProvider";
+import { ProfileProvider } from "@/components/app/ProfileProvider";
 import { AppShell } from "@/components/app/shell/AppShell";
 
 /**
@@ -13,11 +14,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getServerUser();
   if (!user) redirect("/login");
 
+  const seed = {
+    email: user.email ?? null,
+    sessionName: fullDisplayName(user),
+    sessionAvatarUrl: sessionAvatarUrl(user),
+  };
+
   return (
     <RealtimeProvider>
-      <AppShell name={fullDisplayName(user)} email={user.email ?? null}>
-        {children}
-      </AppShell>
+      <ProfileProvider seed={seed}>
+        <AppShell>{children}</AppShell>
+      </ProfileProvider>
     </RealtimeProvider>
   );
 }

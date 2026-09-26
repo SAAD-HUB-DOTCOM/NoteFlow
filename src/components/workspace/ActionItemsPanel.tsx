@@ -88,7 +88,7 @@ export function ActionItemsPanel({
                     <button
                       type="button"
                       onClick={() => onSeekTo(item.start as number)}
-                      className="inline-flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary-hover"
+                      className="inline-flex items-center gap-1 text-xs text-foreground/70 underline decoration-border underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
                     >
                       <ClockIcon className="h-3.5 w-3.5" />
                       Jump to {formatTimestamp(item.start)}

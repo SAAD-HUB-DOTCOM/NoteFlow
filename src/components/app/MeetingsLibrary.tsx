@@ -7,7 +7,7 @@ import { statusKind, type StatusKind } from "@/lib/meetingStatus";
 import { formatDuration } from "@/lib/format";
 import { useMeetingsRealtime } from "@/components/app/RealtimeProvider";
 import { ConnectionBadge } from "@/components/app/ConnectionBadge";
-import { ConversationThumb } from "@/components/app/ConversationThumb";
+import { MeetingWaveThumb } from "@/components/app/MeetingWaveThumb";
 import { MeetingStatus } from "@/components/app/MeetingStatus";
 import { RecordMeetingButton } from "@/components/app/RecordMeetingButton";
 import { SearchIcon, PlayIcon, ChevronDownIcon, MicIcon } from "@/components/icons";
@@ -171,7 +171,7 @@ export function MeetingsLibrary() {
         onDate={setDateFilter}
       />
 
-      <div className="mt-6">
+      <div className="mt-6 max-w-[1080px]">
         {state.phase === "loading" && <LibrarySkeleton />}
 
         {state.phase === "error" && (
@@ -196,10 +196,10 @@ export function MeetingsLibrary() {
         )}
 
         {state.phase === "ready" && groups.length > 0 && (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-10">
             {groups.map(({ bucket, items }) => (
               <section key={bucket}>
-                <h2 className="mb-1 px-3 text-[11px] font-medium uppercase tracking-[0.13em] nf-tf">{bucket}</h2>
+                <h2 className="mb-3 px-3 text-[11px] font-medium uppercase tracking-[0.16em] nf-tm">{bucket}</h2>
                 <ul className="flex flex-col">
                   {items.map((m, i) => (
                     <li key={m.id}>
@@ -244,7 +244,7 @@ function Toolbar({
 }) {
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <div className="nf-input flex min-w-0 flex-1 items-center gap-2.5 px-4 py-2.5 lg:max-w-md">
+      <div className="nf-input flex min-w-0 flex-1 items-center gap-2.5 px-4 py-2.5">
         <SearchIcon className="h-4 w-4 shrink-0 nf-tm" />
         <input
           value={query}
@@ -255,7 +255,7 @@ function Toolbar({
         />
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto lg:ml-auto lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex shrink-0 items-center gap-2 overflow-x-auto lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div
           className="flex shrink-0 items-center gap-0.5 rounded-full p-1"
           style={{ background: "var(--nf-surface-1)", border: "1px solid var(--nf-border)" }}
@@ -352,10 +352,13 @@ function MeetingRow({ meeting, bucket }: { meeting: MeetingDTO; bucket: Bucket }
       className="nf-row group flex items-center gap-4 rounded-xl px-3 py-3.5"
       style={live ? { background: "rgba(255,255,255,0.025)" } : undefined}
     >
-      <ConversationThumb seed={meeting.id} className="h-12 w-[76px] transition-opacity group-hover:opacity-90" />
+      <MeetingWaveThumb
+        seed={meeting.id}
+        className="h-12 w-[76px] brightness-[0.88] transition duration-200 group-hover:brightness-110"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[0.95rem] font-medium nf-t">{meeting.title || "Untitled meeting"}</p>
-        <p className="mt-1 truncate text-xs nf-tm">{meta}</p>
+        <p className="mt-1 truncate text-[12px] nf-t2">{meta}</p>
       </div>
       <div className="hidden shrink-0 transition-opacity group-hover:opacity-0 sm:block">
         <MeetingStatus status={meeting.status} />

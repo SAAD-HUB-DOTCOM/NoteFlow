@@ -10,10 +10,12 @@ from app.db import get_db
 from app.models import (
     Meeting,
     MeetingIntelligence,
+    Person,
     Profile,
     TranscriptSegment,
     UserPreferences,
 )
+from app.services import people as people_service
 from app.services.aggregates import list_action_items, list_highlights
 from app.schemas import (
     ActionItemOut,
@@ -23,11 +25,17 @@ from app.schemas import (
     CaptureIn,
     HealthOut,
     HighlightOut,
+    LinkParticipantIn,
     MeetingIntelligenceOut,
     MeetingOut,
     MeetingTranscriptOut,
     MeOut,
     MeUpdate,
+    MergePeopleIn,
+    PersonCreateIn,
+    PersonDetailOut,
+    PersonMeetingOut,
+    PersonOut,
     PreferencesOut,
     PreferencesUpdate,
     RecordingOut,
@@ -46,6 +54,7 @@ from app.services.intelligence import (
     GroqNotConfigured,
     answer_across_meetings,
     answer_question,
+    generate_intelligence,
 )
 from app.services.transcription import enqueue_job, run_create_transcript
 
@@ -538,3 +547,166 @@ def get_meeting_intelligence(
         state="generating" if has_transcript else "unavailable",
         content=None,
     )
+
+
+@router.post(
+    "/meetings/{meeting_id}/intelligence",
+    response_model=MeetingIntelligenceOut,
+    tags=["meetings"],
+)
+def regenerate_meeting_intelligence(
+    meeting_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeetingIntelligenceOut:
+    """On-demand (re)generation of meeting intelligence. Because generation otherwise only runs
+    once at transcript-processing time (best-effort), meetings processed before that code existed —
+    or where the one Groq attempt failed — would be stuck reporting `generating` forever. This
+    schedules the idempotent generator so the row backfills; the client keeps polling GET until
+    `ready`. Owner-scoped; no-op when a row already exists or there's no transcript."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None or meeting.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found.")
+    row = db.get(MeetingIntelligence, meeting_id)
+    if row is not None:
+        return MeetingIntelligenceOut(meeting_id=meeting_id, state="ready", content=row.content)
+    has_transcript = (
+        db.query(TranscriptSegment).filter(TranscriptSegment.meeting_id == meeting_id).count() > 0
+    )
+    if not has_transcript:
+        return MeetingIntelligenceOut(meeting_id=meeting_id, state="unavailable", content=None)
+    background_tasks.add_task(generate_intelligence, meeting_id)
+    return MeetingIntelligenceOut(meeting_id=meeting_id, state="generating", content=None)
+
+
+# ── People (Phase 6C) ────────────────────────────────────────────────────────────
+#
+# Cross-meeting identities resolved from trustworthy evidence only (see services/people.py).
+# Every route is owner-scoped: a user can never read, create, link, unlink, or merge another
+# owner's people or participants — an owner mismatch is an indistinguishable 404.
+
+def _person_out(person: Person, count: int, last_at) -> PersonOut:
+    return PersonOut(
+        id=person.id,
+        display_name=person.display_name,
+        email=person.primary_email,
+        avatar_url=person.avatar_url,
+        conversation_count=count,
+        last_conversation_at=last_at,
+    )
+
+
+def _person_detail(db: Session, user: CurrentUser, person: Person) -> PersonDetailOut:
+    meetings = people_service.person_meetings(db, user.id, person)
+    last_at = max((m.started_at or m.created_at for m in meetings), default=None)
+    return PersonDetailOut(
+        id=person.id,
+        display_name=person.display_name,
+        email=person.primary_email,
+        avatar_url=person.avatar_url,
+        conversation_count=len(meetings),
+        last_conversation_at=last_at,
+        meetings=[PersonMeetingOut.model_validate(m) for m in meetings],
+    )
+
+
+@router.get("/people", response_model=list[PersonOut], tags=["people"])
+def list_people(
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[PersonOut]:
+    """The owner's resolved people, most-recent conversation first. Only people with at least one
+    linked conversation appear; email/avatar are present only when actually known."""
+    return [_person_out(p, count, last_at) for p, count, last_at in people_service.list_people(db, user.id)]
+
+
+@router.post("/people", response_model=PersonDetailOut, tags=["people"])
+def create_person(
+    payload: PersonCreateIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PersonDetailOut:
+    """Create a person for the owner, optionally seeded from (and linked to) an observed
+    participant — the reliable way to establish an identity today."""
+    try:
+        person = people_service.create_person(
+            db, user.id,
+            meeting_participant_id=payload.meeting_participant_id,
+            display_name=payload.display_name,
+        )
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found.")
+    db.commit()
+    db.refresh(person)
+    return _person_detail(db, user, person)
+
+
+@router.get("/people/{person_id}", response_model=PersonDetailOut, tags=["people"])
+def get_person(
+    person_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PersonDetailOut:
+    try:
+        person = people_service._owned_person(db, user.id, person_id)
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found.")
+    return _person_detail(db, user, person)
+
+
+@router.post("/people/{person_id}/link-participant", response_model=PersonDetailOut, tags=["people"])
+def link_participant(
+    person_id: str,
+    payload: LinkParticipantIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PersonDetailOut:
+    """Manually associate an observed participant with this person (owner-scoped)."""
+    try:
+        person = people_service.link_participant_to_person(
+            db, user.id, payload.meeting_participant_id, person_id
+        )
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person or participant not found.")
+    db.commit()
+    db.refresh(person)
+    return _person_detail(db, user, person)
+
+
+@router.post("/people/{person_id}/unlink-participant", response_model=PersonDetailOut, tags=["people"])
+def unlink_participant(
+    person_id: str,
+    payload: LinkParticipantIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PersonDetailOut:
+    """Detach a participant from this person (owner-scoped). Raw participant data is preserved."""
+    try:
+        person = people_service._owned_person(db, user.id, person_id)
+        people_service.unlink_participant(db, user.id, payload.meeting_participant_id)
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person or participant not found.")
+    db.commit()
+    db.refresh(person)
+    return _person_detail(db, user, person)
+
+
+@router.post("/people/{person_id}/merge", response_model=PersonDetailOut, tags=["people"])
+def merge_person(
+    person_id: str,
+    payload: MergePeopleIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PersonDetailOut:
+    """Merge `source_person_id` into `{person_id}` (target). Every meeting association is preserved
+    and the emptied source is removed. Owner-scoped."""
+    try:
+        target = people_service.merge_people(db, user.id, payload.source_person_id, person_id)
+    except people_service.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    db.commit()
+    db.refresh(target)
+    return _person_detail(db, user, target)

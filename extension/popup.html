@@ -5,38 +5,49 @@
     <style>
       :root { color-scheme: dark; }
       body {
-        width: 288px; margin: 0; padding: 16px;
-        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-        background: #0F0F1A; color: #F5F5F7;
+        width: 300px; margin: 0; padding: 18px;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: #050505; color: #F4F4F2;
+        -webkit-font-smoothing: antialiased;
       }
-      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-      .brand .name { font-weight: 600; letter-spacing: -0.01em; }
-      .status { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 14px;
-        border: 1px solid #2D2D45; background: #1A1A2E; border-radius: 10px; padding: 10px 12px; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
-      .ok { background: #00D9C0; } .off { background: #FF6B6B; }
-      .muted { color: #9B9BAE; font-size: 13px; line-height: 1.5; }
+      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+      .brand .word { font-size: 15px; letter-spacing: -0.02em; }
+      .brand .word b { font-weight: 600; } .brand .word span { font-weight: 400; }
+      .status {
+        display: flex; align-items: center; gap: 9px; font-size: 13px; margin-bottom: 14px;
+        border: 1px solid rgba(255,255,255,0.09); background: #0B0B0C; border-radius: 12px; padding: 10px 12px;
+      }
+      .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+      .ok { background: #E9E9E5; } .off { background: #D96C64; }
+      .muted { color: #A5A5A2; font-size: 13px; line-height: 1.55; }
       button {
-        width: 100%; cursor: pointer; border: 0; border-radius: 9px; margin-top: 8px;
-        background: #6C5CE7; color: #fff; font-weight: 600; font-size: 13px; padding: 10px;
-        font-family: inherit;
+        width: 100%; cursor: pointer; border: 0; border-radius: 10px; margin-top: 8px;
+        background: #F2F2EF; color: #0A0A0A; font-weight: 560; font-size: 13px; padding: 10px;
+        font-family: inherit; transition: transform .16s ease, opacity .16s ease;
       }
-      button:hover { background: #5B4BD6; }
-      button.ghost { background: transparent; border: 1px solid #2D2D45; color: #F5F5F7; }
-      .hint { margin-top: 12px; font-size: 12.5px; color: #9B9BAE; line-height: 1.5; }
-      code { color: #8B7CF6; }
+      button:hover { transform: translateY(-1px); }
+      button.ghost {
+        background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.11); color: #EAEAE7; font-weight: 500;
+      }
+      button.ghost:hover { background: rgba(255,255,255,0.06); transform: none; }
+      .hint { margin-top: 13px; font-size: 12px; color: #93938F; line-height: 1.55; }
+      code { color: #F4F4F2; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+      @media (prefers-reduced-motion: reduce) { button:hover { transform: none; } }
     </style>
   </head>
   <body>
     <div class="brand">
-      <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="8" fill="#1A1A2E" stroke="#2D2D45" />
-        <rect x="7" y="15" width="2.4" height="4" rx="1.2" fill="#6C5CE7" opacity="0.5" />
-        <rect x="11" y="11" width="2.4" height="8" rx="1.2" fill="#6C5CE7" opacity="0.75" />
-        <rect x="15" y="7" width="2.4" height="14" rx="1.2" fill="#6C5CE7" />
-        <rect x="19" y="12.5" width="2.4" height="5" rx="1.2" fill="#00D9C0" opacity="0.9" />
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="0.5" y="0.5" width="27" height="27" rx="8" fill="#101011" stroke="rgba(255,255,255,0.10)" />
+        <g fill="#F4F4F2">
+          <rect x="7" y="14" width="2.2" height="6" rx="1.1" opacity="0.55" />
+          <rect x="10.4" y="11" width="2.2" height="12" rx="1.1" opacity="0.8" />
+          <rect x="13.8" y="7.5" width="2.2" height="15" rx="1.1" />
+          <rect x="17.2" y="10.5" width="2.2" height="9" rx="1.1" opacity="0.8" />
+          <rect x="20.6" y="13" width="2.2" height="4.5" rx="1.1" opacity="0.55" />
+        </g>
       </svg>
-      <span class="name">NoteFlow Capture</span>
+      <span class="word"><b>Note</b><span>Flow</span></span>
     </div>
 
     <div class="status"><span class="dot" id="dot"></span><span id="status-text">Checking…</span></div>

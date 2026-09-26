@@ -94,8 +94,11 @@ export default async function LoginPage() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/assets/Wave-texture.png"
+          src="/assets/Wave-texture.webp"
           alt=""
+          // Decorative top band, but above the fold — fetch it promptly so it paints with the page.
+          fetchPriority="high"
+          decoding="async"
           className="w-full opacity-80"
           style={{
             WebkitMaskImage:

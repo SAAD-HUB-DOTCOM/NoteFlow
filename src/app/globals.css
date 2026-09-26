@@ -193,7 +193,7 @@
   width: 2px;
   height: 12px;
   border-radius: 9999px;
-  background-color: #9600ff;
+  background-color: rgba(250, 245, 245, 0.85); /* monochrome theme: white light, no brand hue */
   transform-origin: bottom;
   animation: eq 0.9s ease-in-out infinite;
 }
@@ -495,4 +495,115 @@
 @media (prefers-reduced-motion: reduce) {
   .nf-btn-primary, .nf-btn-secondary, .nf-btn-ghost, .nf-nav, .nf-input, .nf-row { transition: none; }
   .nf-btn-primary:hover { transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Universal-context horizon — a giant circle rising from the bottom of a
+   section whose top rim fills with the brand hues as the section scrolls.
+   One deliberate brand moment (see components/landing/HorizonStatement.tsx).
+   --fill (0..1) is driven by GSAP ScrollTrigger; reduced-motion pins it to 1.
+--------------------------------------------------------------------------- */
+.nf-horizon {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: clamp(300px, 44vh, 560px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.nf-planet {
+  position: absolute;
+  /* drop the circle a little so there's room ABOVE the rim for the glow to bloom
+     (before the stage clips it) instead of the light being cut off at the top edge */
+  top: clamp(52px, 9vh, 104px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max(1200px, 208vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  background: #000;
+}
+/* Nested masks (no mask-composite): the reveal wedge wraps the ring layers, so each element
+   carries a single mask — reliable across browsers. */
+.nf-rim-base,
+.nf-rim-reveal,
+.nf-rim-rainbow,
+.nf-rim-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+/* resting rim: a faint neutral edge, always visible before the fill */
+.nf-rim-base {
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.04) 46deg,
+    transparent 74deg, transparent 286deg,
+    rgba(255, 255, 255, 0.04) 314deg, rgba(255, 255, 255, 0.4) 360deg
+  );
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px), #000 calc(100% - 0.5px), transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px), #000 calc(100% - 0.5px), transparent 100%);
+}
+/* reveal wedge: opaque from the left tip growing clockwise across the top arc as --fill rises;
+   the leading edge is feathered so there's no hard radial cut. Clips its children (rim + glow). */
+.nf-rim-reveal {
+  overflow: hidden;
+  -webkit-mask: conic-gradient(from 313deg at 50% 50%,
+    #000 0deg, #000 calc(max(0deg, var(--fill, 0) * 118deg - 16deg)), transparent calc(var(--fill, 0) * 118deg), transparent 360deg);
+  mask: conic-gradient(from 313deg at 50% 50%,
+    #000 0deg, #000 calc(max(0deg, var(--fill, 0) * 118deg - 16deg)), transparent calc(var(--fill, 0) * 118deg), transparent 360deg);
+}
+/* rainbow rim: brand hues across the visible top arc (warm left, cool right) */
+.nf-rim-rainbow,
+.nf-rim-glow {
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    #FFF58C 0deg, #FFA8BB 16deg, #00BEFF 42deg,
+    transparent 74deg, transparent 286deg,
+    #9600FF 318deg, #F55200 344deg, #FFF58C 360deg
+  );
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px), #000 calc(100% - 0.5px), transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px), #000 calc(100% - 0.5px), transparent 100%);
+}
+/* colored bloom off the rim — a wide soft ring + heavy blur so coloured light spills into the
+   black on both sides of the edge; intensity tracks fill so it lights up as the circle fills */
+.nf-rim-glow {
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 26px), #000 calc(100% - 18px), #000 calc(100% - 1px), transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent calc(100% - 26px), #000 calc(100% - 18px), #000 calc(100% - 1px), transparent 100%);
+  filter: blur(26px);
+  opacity: calc(0.45 + var(--fill, 0) * 0.55);
+}
+/* a second, broader halo for the light that reaches up toward the headline */
+.nf-rim-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    #FFF58C 0deg, #FFA8BB 16deg, #00BEFF 42deg,
+    transparent 74deg, transparent 286deg,
+    #9600FF 318deg, #F55200 344deg, #FFF58C 360deg
+  );
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 70px), #000 calc(100% - 40px), #000 calc(100% - 1px), transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent calc(100% - 70px), #000 calc(100% - 40px), #000 calc(100% - 1px), transparent 100%);
+  filter: blur(48px);
+  opacity: calc(var(--fill, 0) * 0.5);
+}
+
+/* Arc stage: holds the rising planet between the headline and the feature grid (Universal-context
+   composition). And .nf-fade: section text whose opacity tracks the rim glow (--fill), so it
+   brightens into view as the circle's border fills on scroll. */
+.nf-arc-stage {
+  position: relative;
+  height: clamp(260px, 38vh, 500px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.nf-fade {
+  opacity: calc(var(--fill, 0) * 1.45);
+  transform: translateY(calc((1 - var(--fill, 0)) * 7px));
+  will-change: opacity, transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-fade { opacity: 1; transform: none; }
 }

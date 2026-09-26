@@ -13,7 +13,7 @@ export function MeetingStatus({ status }: { status: string }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[11.5px] nf-t2">
         <CheckIcon className="h-3.5 w-3.5" style={{ color: "var(--nf-ready)" }} />
-        Summary ready
+        Ready
       </span>
     );
   }

@@ -154,7 +154,7 @@ export function TranscriptPanel({
             }}
             placeholder="Search this transcript"
             aria-label="Search this transcript"
-            className="w-full rounded-lg border border-border bg-background/60 py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted transition-colors focus:border-primary focus:outline-none"
+            className="w-full rounded-lg border border-border bg-background/60 py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted transition-colors focus:border-white/30 focus:outline-none"
           />
         </div>
 
@@ -304,7 +304,7 @@ const TranscriptRow = memo(function TranscriptRow({
             <span className="mb-0.5 flex items-center gap-2">
               <span
                 className={`text-sm font-semibold ${
-                  isActive ? "text-primary" : "text-foreground/90"
+                  isActive ? "text-foreground" : "text-foreground/90"
                 }`}
               >
                 {name}

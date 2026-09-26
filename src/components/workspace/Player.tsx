@@ -20,7 +20,7 @@ export function Player({ seed }: { seed: string }) {
         type="button"
         onClick={toggle}
         aria-label={isPlaying ? "Pause" : "Play"}
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-white transition-colors hover:bg-primary-hover focus-visible:bg-primary-hover"
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F2F2EF] text-[#0A0A0A] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-150 hover:-translate-y-px focus-visible:-translate-y-px"
       >
         {isPlaying ? (
           <PauseIcon className="h-5 w-5" />
@@ -60,7 +60,7 @@ export function Player({ seed }: { seed: string }) {
             onChange={(e) => seekTo(Number(e.target.value))}
             aria-label="Seek recording"
             aria-valuetext={`${formatTimestamp(currentTime)} of ${formatTimestamp(duration)}`}
-            className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-primary [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-track]:bg-transparent"
+            className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-white [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-foreground [&::-moz-range-track]:bg-transparent"
           />
         </div>
       </div>

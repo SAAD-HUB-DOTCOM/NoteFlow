@@ -28,7 +28,7 @@ export default async function HomePage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url(/assets/Wave-texture.png)",
+            backgroundImage: "url(/assets/Wave-texture.webp)",
             backgroundSize: "cover",
             backgroundPosition: "top right",
             filter: "grayscale(1) brightness(1.3) contrast(1.12)",

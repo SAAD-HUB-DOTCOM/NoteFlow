@@ -4,7 +4,7 @@
  * (a drawn icon carrying meaning), deliberately distinct from a bare text kicker — it's the pinned
  * brand idiom, used once per section, never twice back-to-back with the same hue.
  */
-type Hue = "cyan" | "yellow" | "pink" | "purple" | "black";
+type Hue = "cyan" | "yellow" | "pink" | "purple" | "black" | "white";
 
 const HUE: Record<Hue, string> = {
   cyan: "text-brand-cyan",
@@ -12,6 +12,8 @@ const HUE: Record<Hue, string> = {
   pink: "text-brand-pink",
   purple: "text-brand-purple",
   black: "text-black/70",
+  // monochrome variant for the restrained lower-page sections (landing_design_skill.md)
+  white: "text-foreground/70",
 };
 
 /** The Fathom 4-point sparkle (authored path), one consistent form across the site. */

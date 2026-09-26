@@ -1,14 +1,20 @@
-import { ComingScreen } from "@/components/app/ComingScreen";
+import { AccountSettings } from "@/components/app/AccountSettings";
 
 export const metadata = { title: "Settings — NoteFlow" };
 
 export default function SettingsPage() {
   return (
-    <ComingScreen
-      eyebrow="Settings"
-      title="Settings"
-      description="Account, capture defaults, and workspace preferences."
-      detail="Settings surfaces will be wired to real account and capture endpoints as they land. Sign-out is available from your account menu at the bottom of the sidebar."
-    />
+    <main className="relative min-w-0 flex-1 overflow-hidden px-5 py-8 sm:px-8 lg:px-10">
+      <div className="relative z-10 max-w-[760px]">
+        <header>
+          <h1 className="text-[1.4rem] font-medium tracking-[-0.02em] nf-t">Settings</h1>
+          <p className="mt-1 text-sm nf-tm">Manage your NoteFlow account.</p>
+        </header>
+
+        <div className="mt-10">
+          <AccountSettings />
+        </div>
+      </div>
+    </main>
   );
 }

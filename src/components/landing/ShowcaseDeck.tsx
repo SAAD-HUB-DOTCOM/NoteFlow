@@ -407,7 +407,7 @@ export function ShowcaseDeck() {
       </div>
 
       <p
-        className="relative z-10 mx-auto mt-12 max-w-lg text-center text-p-small text-muted"
+        className="mx-auto mt-12 max-w-lg text-center text-p-small text-muted"
         aria-live="polite"
       >
         <span className="font-medium text-foreground">{current.lead}</span>{" "}

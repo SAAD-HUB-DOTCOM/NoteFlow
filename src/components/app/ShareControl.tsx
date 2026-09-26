@@ -72,25 +72,28 @@ export function ShareControl({
         type="button"
         onClick={() => void onClick()}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground/90 transition-colors hover:bg-surface-hover disabled:opacity-60"
+        className="nf-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
       >
         <ShareIcon className="h-4 w-4" />
         {shareId ? "Shared" : "Share"}
       </button>
 
       {open && shareId && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-xl border border-border bg-surface p-3 shadow-lg">
-          <p className="text-xs text-muted">
+        <div
+          className="absolute right-0 z-30 mt-2 w-80 rounded-xl p-3.5 shadow-xl shadow-black/50"
+          style={{ background: "var(--nf-surface-2)", border: "1px solid var(--nf-border)" }}
+        >
+          <p className="text-xs leading-relaxed nf-tm">
             Anyone with this link can view this meeting’s transcript and summary — no sign-in needed.
           </p>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-background/60 px-2 py-1 text-xs text-muted">
+          <div className="mt-2.5 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs nf-t2" style={{ background: "var(--nf-bg)", border: "1px solid var(--nf-border)" }}>
               {url}
             </code>
             <button
               type="button"
               onClick={() => void copy()}
-              className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
+              className="nf-btn-primary shrink-0 px-2.5 py-1.5 text-xs"
             >
               {copied ? "Copied" : "Copy"}
             </button>
@@ -99,14 +102,15 @@ export function ShareControl({
             type="button"
             onClick={() => void revoke()}
             disabled={busy}
-            className="mt-2 text-xs font-medium text-danger transition-colors hover:underline disabled:opacity-60"
+            className="mt-2.5 text-xs font-medium transition-colors hover:underline disabled:opacity-60"
+            style={{ color: "var(--nf-failed)" }}
           >
             Revoke link
           </button>
         </div>
       )}
 
-      {error && <p className="absolute right-0 mt-2 text-xs text-danger">{error}</p>}
+      {error && <p className="absolute right-0 mt-2 text-xs" style={{ color: "var(--nf-failed)" }}>{error}</p>}
     </div>
   );
 }

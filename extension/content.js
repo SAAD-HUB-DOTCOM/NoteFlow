@@ -18,46 +18,52 @@
     <style>
       :host { all: initial; }
       .card {
-        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        position: relative;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         display: flex; align-items: center; gap: 12px;
-        background: #1A1A2E; color: #F5F5F7;
-        border: 1px solid #2D2D45; border-radius: 14px;
-        padding: 10px 12px; box-shadow: 0 12px 34px rgba(0,0,0,.5);
+        background: #0B0B0C; color: #F4F4F2;
+        border: 1px solid rgba(255,255,255,0.10); border-radius: 14px;
+        padding: 11px 13px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 40px rgba(0,0,0,.55);
         max-width: 320px;
       }
       .mark { flex: 0 0 auto; }
       .body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
-      .sub { font-size: 11.5px; color: #9B9BAE; line-height: 1.35; }
+      .sub { font-size: 11.5px; color: #A5A5A2; line-height: 1.35; }
       .btn {
-        flex: 0 0 auto; cursor: pointer; border: 0; border-radius: 9px;
-        background: #6C5CE7; color: #fff; font-weight: 600; font-size: 12.5px;
-        padding: 8px 12px; transition: background .15s ease;
+        flex: 0 0 auto; cursor: pointer; border: 0; border-radius: 10px;
+        background: #F2F2EF; color: #0A0A0A; font-weight: 560; font-size: 12.5px;
+        padding: 8px 13px; transition: transform .15s ease, opacity .15s ease;
         font-family: inherit;
       }
-      .btn:hover { background: #5B4BD6; }
-      .btn:disabled { opacity: .6; cursor: default; }
-      .btn.ghost { background: transparent; color: #F5F5F7; border: 1px solid #2D2D45; }
-      .dot { width: 7px; height: 7px; border-radius: 50%; background: #00D9C0; display:inline-block; margin-right:6px; }
-      .rec { width: 7px; height: 7px; border-radius: 50%; background: #FF6B6B; display:inline-block; margin-right:6px; animation: pulse 1.4s ease-in-out infinite; }
+      .btn:hover { transform: translateY(-1px); }
+      .btn:disabled { opacity: .55; cursor: default; transform: none; }
+      .btn.ghost { background: rgba(255,255,255,0.04); color: #EAEAE7; border: 1px solid rgba(255,255,255,0.11); font-weight: 500; }
+      .btn.ghost:hover { background: rgba(255,255,255,0.07); transform: none; }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: #E9E9E5; display:inline-block; margin-right:6px; }
+      .rec { width: 7px; height: 7px; border-radius: 50%; background: #D96C64; display:inline-block; margin-right:6px; animation: pulse 1.4s ease-in-out infinite; }
       @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
       .row { display:flex; align-items:center; gap:8px; }
       .close { position:absolute; top:-8px; right:-8px; width:20px; height:20px; border-radius:50%;
-        background:#24243D; border:1px solid #2D2D45; color:#9B9BAE; cursor:pointer; font-size:12px; line-height:1;
+        background:#171718; border:1px solid rgba(255,255,255,0.12); color:#A5A5A2; cursor:pointer; font-size:12px; line-height:1;
         display:grid; place-items:center; }
       .hidden { display:none; }
-      a { color:#8B7CF6; text-decoration:none; }
+      a { color:#F4F4F2; text-decoration:underline; text-underline-offset:2px; }
       a:hover { text-decoration:underline; }
+      @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } .rec { animation: none; } }
     </style>
     <div class="card" part="card">
       <button class="close" title="Hide">×</button>
       <span class="mark">
         <svg width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <rect width="28" height="28" rx="8" fill="#0F0F1A" stroke="#2D2D45"/>
-          <rect x="7" y="15" width="2.4" height="4" rx="1.2" fill="#6C5CE7" opacity="0.5"/>
-          <rect x="11" y="11" width="2.4" height="8" rx="1.2" fill="#6C5CE7" opacity="0.75"/>
-          <rect x="15" y="7" width="2.4" height="14" rx="1.2" fill="#6C5CE7"/>
-          <rect x="19" y="12.5" width="2.4" height="5" rx="1.2" fill="#00D9C0" opacity="0.9"/>
+          <rect x="0.5" y="0.5" width="27" height="27" rx="8" fill="#101011" stroke="rgba(255,255,255,0.10)"/>
+          <g fill="#F4F4F2">
+            <rect x="7" y="14" width="2.2" height="6" rx="1.1" opacity="0.55"/>
+            <rect x="10.4" y="11" width="2.2" height="12" rx="1.1" opacity="0.8"/>
+            <rect x="13.8" y="7.5" width="2.2" height="15" rx="1.1"/>
+            <rect x="17.2" y="10.5" width="2.2" height="9" rx="1.1" opacity="0.8"/>
+            <rect x="20.6" y="13" width="2.2" height="4.5" rx="1.1" opacity="0.55"/>
+          </g>
         </svg>
       </span>
       <div class="body">

@@ -68,7 +68,7 @@ function Block({ block }: { block: SummaryBlock }) {
         {block.items?.map((point, i) => (
           <li key={i} className="flex gap-3 text-sm leading-relaxed text-foreground/85">
             <span
-              className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+              className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/50"
               aria-hidden="true"
             />
             {point}

@@ -50,7 +50,7 @@ export function ShareButton({ meetingId }: { meetingId: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+        className="inline-flex items-center gap-2 rounded-lg bg-[#F2F2EF] px-3.5 py-2 text-sm font-medium text-[#0A0A0A] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-150 hover:-translate-y-px"
       >
         <ShareIcon className="h-4 w-4" />
         Share
@@ -88,7 +88,7 @@ export function ShareButton({ meetingId }: { meetingId: string }) {
             <button
               type="button"
               onClick={copy}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#F2F2EF] px-3 py-2 text-xs font-medium text-[#0A0A0A] transition-transform duration-150 hover:-translate-y-px"
             >
               {copied ? <CheckIcon className="h-3.5 w-3.5" /> : null}
               {copied ? "Copied" : "Copy"}

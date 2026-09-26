@@ -136,6 +136,43 @@ class RecordingOut(BaseModel):
     duration_seconds: int | None = None
 
 
+class PersonOut(BaseModel):
+    """A resolved person in the owner's directory. email/avatar appear ONLY when actually known."""
+    id: str
+    display_name: str | None = None
+    email: str | None = None
+    avatar_url: str | None = None
+    conversation_count: int
+    last_conversation_at: datetime | None = None
+
+
+class PersonMeetingOut(BaseModel):
+    id: str
+    title: str | None = None
+    status: str
+    started_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PersonDetailOut(PersonOut):
+    meetings: list[PersonMeetingOut]
+
+
+class PersonCreateIn(BaseModel):
+    meeting_participant_id: str | None = None
+    display_name: str | None = None
+
+
+class LinkParticipantIn(BaseModel):
+    meeting_participant_id: str
+
+
+class MergePeopleIn(BaseModel):
+    source_person_id: str
+
+
 class MeetingIntelligenceOut(BaseModel):
     meeting_id: str
     # "ready" (content present) | "generating" (transcript ready, insights pending) |

@@ -6,8 +6,10 @@ import { Starfield } from "@/components/landing/Starfield";
 import { HeroVideo } from "@/components/landing/HeroVideo";
 import { TeamsTabs } from "@/components/landing/TeamsTabs";
 import { ShowcaseDeck } from "@/components/landing/ShowcaseDeck";
-import { Pillars } from "@/components/landing/Pillars";
 import { MeetingAnswers } from "@/components/landing/MeetingAnswers";
+import { BuiltFor } from "@/components/landing/BuiltFor";
+import { AskWorkspace } from "@/components/landing/AskWorkspace";
+import { ProductTabs } from "@/components/landing/ProductTabs";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { IntegrationsConstellation } from "@/components/landing/IntegrationsConstellation";
 import { TeamStats } from "@/components/landing/TeamStats";
@@ -20,9 +22,6 @@ export const metadata: Metadata = {
     "NoteFlow records, transcribes, and summarizes your calls, then hands you the recap, action items, and answers before you've closed the tab. Now recording bot-free.",
 };
 
-// Built section-by-section against DESIGN.md §5 (product page anatomy):
-// hero → beats slider → marquee → audience tabs → 3 pillars → stats → how-it-works →
-// integrations constellation → FAQ → gradient-band CTA → mega footer.
 export default function ProductPage() {
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
@@ -30,12 +29,10 @@ export default function ProductPage() {
       <main>
         <Hero />
         <BeatsSection />
-        {/* <Marquee /> */}
         <MeetingAnswers />
-        <PillarsSection />
-        <TeamStats />
-        <HowItWorksSection />
-        <IntegrationsSection />
+        <BuiltFor />
+        <AskWorkspace />
+        <ProductTabs />
         <Faq />
         <FinalCta />
       </main>
@@ -109,11 +106,27 @@ function Hero() {
 
         <div className="mt-[26px] flex flex-wrap items-center justify-center gap-2.5">
           <Link
-            href="/login"
-            className="vsp-btn vsp-btn-solid vsp-appear vsp-btn-in inline-flex h-[42px] items-center rounded-md px-[18px] text-[13.5px] font-medium tracking-[-0.02em]"
+            href="/extension"
+            className="vsp-btn vsp-btn-solid vsp-appear vsp-btn-in group inline-flex h-[42px] items-center gap-2 rounded-md px-[18px] text-[13.5px] font-medium tracking-[-0.02em]"
             style={{ ["--d" as string]: "0.96s" }}
           >
-            Start for free
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <g className="transition-transform duration-300 ease-out group-hover:translate-y-[2px]">
+                <path d="M12 3v10" />
+                <path d="m8 9 4 4 4-4" />
+              </g>
+              <path d="M4 14.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5" />
+            </svg>
+            Download extension
           </Link>
           <Link
             href="/meeting/noteflow-product-planning"
@@ -207,10 +220,6 @@ function AudienceSection() {
   );
 }
 
-function PillarsSection() {
-  return <Pillars />;
-}
-
 function HowItWorksSection() {
   return (
     <section className="relative overflow-hidden border-t border-border/60">
@@ -227,11 +236,11 @@ function IntegrationsSection() {
     <section className="relative overflow-hidden border-t border-border/60">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-2xl text-center">
-          <StarEyebrow hue="yellow" align="center">
+          <StarEyebrow hue="white" align="center">
             Zero friction, maximum flexibility
           </StarEyebrow>
-          <h2 className="mt-4 font-display text-h2 font-normal text-foreground text-balance">
-            Works <span className="font-semibold">where you meet</span>
+          <h2 className="mt-4 font-display text-h2 font-medium tracking-[-0.02em] text-foreground text-balance">
+            Works where you meet.
           </h2>
         </div>
         <div className="mt-16">
@@ -273,8 +282,8 @@ function Faq() {
       className="relative scroll-mt-24 overflow-hidden border-t border-border/60"
     >
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 sm:py-24">
-        <h2 className="text-center font-display text-h2 font-normal text-foreground text-balance">
-          Questions, <span className="font-semibold">answered</span>
+        <h2 className="text-center font-display text-h2 font-medium tracking-[-0.02em] text-foreground text-balance">
+          Questions, answered.
         </h2>
         <div className="mt-12 divide-y divide-border rounded-boxed border border-border bg-surface/40 backdrop-blur-sm">
           {items.map((item) => (
@@ -309,37 +318,36 @@ function Faq() {
 function FinalCta() {
   return (
     <section className="relative overflow-hidden">
-      {/* full-bleed pink→purple gradient band */}
+      {/* top hairline that fades at the ends and shines at the center, with a soft bloom above the copy */}
       <div
         aria-hidden="true"
-        className="absolute inset-0"
+        className="absolute inset-x-0 top-0 h-px"
         style={{
           background:
-            "linear-gradient(120deg, #FFA8BB 0%, #F55200 40%, #9600FF 100%)",
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.10) 22%, rgba(255,255,255,0.38) 50%, rgba(255,255,255,0.10) 78%, transparent)",
         }}
       />
-      {/* soft light scrim behind the copy so near-black text clears contrast on the darker end */}
       <div
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 h-[26rem] w-[46rem] max-w-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="absolute left-1/2 top-0 h-44 w-[40rem] max-w-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
         style={{
           background:
-            "radial-gradient(closest-side, rgba(255,245,235,0.55), transparent 75%)",
+            "radial-gradient(closest-side, rgba(255,255,255,0.10), transparent 72%)",
         }}
       />
       <div className="relative mx-auto max-w-3xl px-4 py-28 text-center sm:px-6 sm:py-36">
-        <StarEyebrow hue="black" align="center">
+        <StarEyebrow hue="white" align="center">
           Never miss what matters
         </StarEyebrow>
-        <h2 className="mt-5 font-display text-h2 font-normal leading-[1.05] text-[#0E0E10] text-balance">
+        <h2 className="mt-5 font-display text-h2 font-medium tracking-[-0.02em] leading-[1.05] text-foreground text-balance">
           Stop guessing. Ask NoteFlow.
-          <span className="block font-semibold">Start today, for free.</span>
         </h2>
+        <p className="mt-4 text-p-regular text-muted">Start today, for free.</p>
         <div className="mt-10 flex flex-col items-center gap-5">
           <a
             href="/noteflow-extension.zip"
             download
-            className="inline-flex items-center gap-2 rounded-full bg-[#0E0E10] px-7 py-3.5 font-display text-sm font-semibold uppercase tracking-wide text-brand-yellow shadow-[0_18px_44px_-14px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out hover:-translate-y-0.5"
+            className="vsp-btn vsp-btn-solid inline-flex h-[44px] items-center gap-2 rounded-md px-6 text-sm font-medium tracking-[-0.01em]"
           >
             Get started — it&apos;s free
             <svg
@@ -358,7 +366,7 @@ function FinalCta() {
           </a>
           <Link
             href="/meeting/noteflow-product-planning"
-            className="font-display text-sm font-medium text-[#0E0E10]/80 underline decoration-[#0E0E10]/40 underline-offset-[6px] transition-colors hover:decoration-[#0E0E10]"
+            className="font-display text-sm font-medium text-muted underline decoration-border underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-foreground"
           >
             or see an example meeting
           </Link>
@@ -370,6 +378,11 @@ function FinalCta() {
 
 /* ------------------------------------------------- Footer (§2.16) -------- */
 
+/**
+ * Footer, after the Raycast composition: the light-wave artwork (assets/gradient.webp) rises
+ * behind the whole footer — crisp in an open window at the top, then seen *through* the link
+ * panel, which is frosted glass (backdrop-blur over the same artwork) below a hairline.
+ */
 function SiteFooter() {
   const cols = [
     {
@@ -381,48 +394,77 @@ function SiteFooter() {
   ];
   const year = 2026;
   return (
-    <footer className="relative border-t border-border bg-offblack">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="grid gap-12 md:grid-cols-[2fr_3fr]">
-          <div>
-            <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-              AI notes for every meeting. Be present on the call; let NoteFlow
-              keep the record.
-            </p>
-            <Link
-              href="/login"
-              className="btn-grad mt-6 inline-flex px-5 py-2.5 text-sm font-semibold uppercase tracking-wide"
-            >
-              Try NoteFlow today
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-            {cols.map((c) => (
-              <div key={c.title}>
-                <h3 className="font-display text-sm font-semibold text-foreground">
-                  {c.title}
-                </h3>
-                <ul className="mt-4 space-y-3">
-                  {c.links.map((l) => (
-                    <li key={l}>
-                      <span className="text-sm text-muted transition-colors hover:text-foreground">
-                        {l}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+    <footer className="relative overflow-hidden bg-background">
+      {/* contained artwork: a centered texture that melts into black at its edges (reference
+          composition) — capped width so it stays minimal and centered on every screen size */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-0 h-[360px] w-[min(94vw,62rem)] -translate-x-1/2 sm:h-[480px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/assets/gradient.webp"
+          alt=""
+          className="h-full w-full object-cover"
+          style={{
+            objectPosition: "50% 28%",
+            WebkitMaskImage:
+              "radial-gradient(80% 82% at 50% 38%, #000 45%, transparent 98%)",
+            maskImage:
+              "radial-gradient(80% 82% at 50% 38%, #000 45%, transparent 98%)",
+          }}
+        />
+      </div>
+
+      <div className="relative">
+        {/* open window: the artwork shows crisp above the glass panel */}
+        <div aria-hidden="true" className="h-32 sm:h-48" />
+
+        {/* frosted glass panel over the artwork */}
+        <div className="border-t border-white/10 bg-black/55 backdrop-blur-2xl">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <div className="grid gap-12 md:grid-cols-[2fr_3fr]">
+              <div>
+                <Logo />
+                <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
+                  AI notes for every meeting. Be present on the call; let
+                  NoteFlow keep the record.
+                </p>
+                <Link
+                  href="/login"
+                  className="vsp-btn vsp-btn-solid mt-6 inline-flex h-[40px] items-center rounded-md px-5 text-[13.5px] font-medium tracking-[-0.01em]"
+                >
+                  Try NoteFlow today
+                </Link>
               </div>
-            ))}
+              <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+                {cols.map((c) => (
+                  <div key={c.title}>
+                    <h3 className="font-display text-sm font-medium text-foreground">
+                      {c.title}
+                    </h3>
+                    <ul className="mt-5 space-y-3.5">
+                      {c.links.map((l) => (
+                        <li key={l}>
+                          <span className="text-sm text-muted transition-colors hover:text-foreground">
+                            {l}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
+              <p className="text-xs text-muted">
+                © {year} NoteFlow. All rights reserved.
+              </p>
+              <p className="text-xs text-muted">
+                Made for people who&apos;d rather be listening.
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
-          <p className="text-xs text-muted">
-            © {year} NoteFlow. All rights reserved.
-          </p>
-          <p className="text-xs text-muted">
-            Made for people who&apos;d rather be listening.
-          </p>
         </div>
       </div>
     </footer>

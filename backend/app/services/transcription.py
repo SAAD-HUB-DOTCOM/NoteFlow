@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import Job, Meeting, TranscriptSegment
+from app.models import Job, Meeting, MeetingParticipant, TranscriptSegment
 from app.services.recall import get_recall_service
 
 DEFAULT_SOURCE = "assembly_ai_async"
@@ -92,13 +92,8 @@ def _chunk_words(words: list) -> list[tuple[str, float, float]]:
     return chunks
 
 
-def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
-    """Turn a Recall transcript artifact into ordered, readable segment dicts.
-
-    Real Recall async shape: a list of {participant:{name,...}, words:[{text,start_timestamp,
-    end_timestamp}]} — one entry per speaker turn. We split each turn into short timestamped lines
-    (better reading + seek granularity). Also handles {speaker,text,start,end} entries. [] if empty.
-    """
+def _entries(payload) -> list:
+    """Unwrap the artifact's entry list from the documented container shapes ([] if none)."""
     entries = payload
     if isinstance(payload, dict):
         entries = []
@@ -106,15 +101,40 @@ def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
             if isinstance(payload.get(key), list):
                 entries = payload[key]
                 break
-    if not isinstance(entries, list):
-        return []
+    return entries if isinstance(entries, list) else []
 
+
+def _entry_participant(entry: dict) -> dict:
+    """Observed participant metadata for one entry — ONLY what the payload actually carries.
+    Never fabricates a name or email, never invents an id. (Phase 6B: the id/name that Perfect
+    Diarization already delivers in the artifact, which used to be discarded past speaker_label.)"""
+    provider_pid = None
+    display_name = None
+    email = None
+    part = entry.get("participant")
+    if isinstance(part, dict):
+        if part.get("id") is not None:
+            provider_pid = str(part["id"])
+        if part.get("name"):
+            display_name = str(part["name"])
+        if part.get("email"):  # real providers rarely include this; use it only if present
+            email = str(part["email"])
+    return {"provider_participant_id": provider_pid, "display_name": display_name, "email": email}
+
+
+def normalize_with_participants(payload, source: str = DEFAULT_SOURCE) -> tuple[list[dict], list[dict]]:
+    """Like `normalize_transcript`, but also returns a parallel list of observed participant
+    metadata (one per segment). The segment dicts are byte-identical to `normalize_transcript`'s
+    output; the metas let ingestion build MeetingParticipant rows and link segments to them."""
     segments: list[dict] = []
+    metas: list[dict] = []
     seq = 0
-    for entry in entries:
+    for entry in _entries(payload):
         if not isinstance(entry, dict):
             continue
         speaker_label = _entry_speaker(entry)
+        meta = _entry_participant(entry)
+        meta["speaker_label"] = speaker_label
         words = entry.get("words")
 
         if isinstance(words, list) and words:
@@ -140,8 +160,86 @@ def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
                     "source": source,
                 }
             )
+            metas.append(meta)
             seq += 1
+    return segments, metas
+
+
+def normalize_transcript(payload, source: str = DEFAULT_SOURCE) -> list[dict]:
+    """Turn a Recall transcript artifact into ordered, readable segment dicts.
+
+    Real Recall async shape: a list of {participant:{name,...}, words:[{text,start_timestamp,
+    end_timestamp}]} — one entry per speaker turn. We split each turn into short timestamped lines
+    (better reading + seek granularity). Also handles {speaker,text,start,end} entries. [] if empty.
+    Participant-aware ingestion uses `normalize_with_participants`; this stays the pure segment view.
+    """
+    segments, _ = normalize_with_participants(payload, source)
     return segments
+
+
+def _participant_key(meta: dict) -> str | None:
+    """Stable per-meeting identity for an observed participant: a stable provider id when present,
+    else the diarization label. None when neither exists → the segment stays unlinked (correct)."""
+    pid = meta.get("provider_participant_id")
+    if pid:
+        return f"pid:{pid}"
+    label = meta.get("speaker_label")
+    if label:
+        return f"label:{label}"
+    return None
+
+
+def _sync_participants(db, meeting, metas: list[dict]) -> dict[str, str]:
+    """Get-or-create one MeetingParticipant per DISTINCT observed participant in this meeting and
+    return {participant_key: participant_id}. Idempotent (get-or-create) so reprocessing/retries
+    never duplicate. NEVER creates a Person and NEVER sets person_id — identity resolution is 6C.
+    A shared display name with distinct provider ids stays two rows (keyed by provider id)."""
+    distinct: dict[str, dict] = {}
+    for meta in metas:
+        key = _participant_key(meta)
+        if key is None:
+            continue
+        agg = distinct.setdefault(key, {
+            "provider_participant_id": meta.get("provider_participant_id"),
+            "speaker_label": meta.get("speaker_label"),
+        })
+        # Enrich from whichever observation actually carries a real name/email.
+        if meta.get("display_name") and not agg.get("display_name"):
+            agg["display_name"] = meta["display_name"]
+        if meta.get("email") and not agg.get("email"):
+            agg["email"] = meta["email"]
+
+    ids: dict[str, str] = {}
+    for key, meta in distinct.items():
+        pid = meta.get("provider_participant_id")
+        label = meta.get("speaker_label")
+        q = db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id)
+        if pid:
+            row = q.filter(MeetingParticipant.provider_participant_id == pid).first()
+        else:
+            row = q.filter(
+                MeetingParticipant.provider_participant_id.is_(None),
+                MeetingParticipant.speaker_label == label,
+            ).first()
+        if row is None:
+            row = MeetingParticipant(
+                meeting_id=meeting.id,
+                provider=meeting.provider,
+                provider_participant_id=pid,
+                display_name=meta.get("display_name"),
+                speaker_label=label,
+                email=meta.get("email"),
+            )
+            db.add(row)
+            db.flush()  # assign id for segment linking, surface any race as IntegrityError here
+        else:
+            # Enrich an existing row without ever nulling a prior observation.
+            if meta.get("display_name") and not row.display_name:
+                row.display_name = meta["display_name"]
+            if meta.get("email") and not row.email:
+                row.email = meta["email"]
+        ids[key] = row.id
+    return ids
 
 
 def extract_download_url(transcript_obj) -> str | None:
@@ -325,7 +423,7 @@ def run_process_transcript(meeting_id: str) -> None:
             if not download_url:
                 raise RuntimeError("Recall transcript has no download_url yet")
             payload = recall.download_transcript(download_url)
-            segments = normalize_transcript(payload)
+            segments, metas = normalize_with_participants(payload)
             if not segments:
                 # Artifact downloaded fine but has no speech — truthful empty transcript, not failure.
                 meeting.status = "ready"
@@ -336,8 +434,34 @@ def run_process_transcript(meeting_id: str) -> None:
                 log.info("process_transcript meeting_id=%s: transcript empty (no speech) -> ready", meeting_id)
                 return
 
-            for seg in segments:
-                db.add(TranscriptSegment(meeting_id=meeting_id, **seg))
+            # Build observed participants (Phase 6B). This is best-effort: incomplete identity
+            # metadata must NEVER fail transcript ingestion. A savepoint isolates any participant
+            # error so the segments still persist, just with meeting_participant_id = null.
+            participant_ids: dict[str, str] = {}
+            try:
+                with db.begin_nested():
+                    participant_ids = _sync_participants(db, meeting, metas)
+            except Exception as exc:  # noqa: BLE001 — participants are optional; transcript is not
+                participant_ids = {}
+                log.warning("participant sync skipped meeting_id=%s (segments still persist): %s",
+                            meeting_id, exc)
+
+            # Phase 6C: resolve observed participants to cross-meeting Persons using trustworthy
+            # evidence only (never names). Best-effort in its own savepoint — a resolution failure
+            # must leave participants + transcript intact.
+            try:
+                with db.begin_nested():
+                    from app.services.people import resolve_meeting_participants
+                    resolve_meeting_participants(db, meeting)
+            except Exception as exc:  # noqa: BLE001 — identity is optional; transcript is not
+                log.warning("identity resolution skipped meeting_id=%s: %s", meeting_id, exc)
+
+            for seg, meta in zip(segments, metas):
+                db.add(TranscriptSegment(
+                    meeting_id=meeting_id,
+                    meeting_participant_id=participant_ids.get(_participant_key(meta)),
+                    **seg,
+                ))
             meeting.status = "ready"
             if job:
                 job.status = "succeeded"

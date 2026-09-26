@@ -1,8 +1,8 @@
 /**
  * A deterministic waveform for a meeting. Bar heights are derived from the meeting id, so
  * every recording gets a stable, recognizable silhouette without any per-render randomness
- * (SSR and client agree). It's monochrome indigo — differentiation comes from the shape, not
- * from introducing new accent colors per card. This represents the actual recording, the
+ * (SSR and client agree). It's monochrome white light (theme) — differentiation comes from the
+ * shape, not from introducing accent colors per card. This represents the actual recording, the
  * characteristic object of a notetaker's world; it isn't a decorative sparkline.
  */
 
@@ -50,7 +50,7 @@ export function Waveform({
       {heights.map((h, i) => (
         <span
           key={i}
-          className="w-full rounded-full bg-primary"
+          className="w-full rounded-full bg-foreground"
           style={{ height: `${Math.max(h, 10)}%`, opacity: 0.38 + (h / 100) * 0.5 }}
         />
       ))}

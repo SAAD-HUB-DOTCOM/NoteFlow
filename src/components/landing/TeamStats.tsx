@@ -6,38 +6,16 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-/**
- * Team stats — DESIGN.md §2.11. The Fathom "section_teams" pattern: three circular stats, each a
- * ring in a distinct hue with a vertical trail, that rise into place one-by-one on a GSAP
- * ScrollTrigger pinned + scrubbed timeline over the signature-gradient grid. Desktop pins and
- * scrubs; mobile / reduced-motion show the circles statically. Numbers are honest product facts
- * (true by how NoteFlow works), never invented.
- */
-type Stat = { value: string; label: string; hue: Hue; rise: number };
-type Hue = "orange" | "pink" | "cyan";
+type Stat = { value: string; label: string; rise: number };
 
 const STATS: Stat[] = [
-  { value: "0", label: "notes to write up by hand", hue: "orange", rise: 150 },
-  { value: "1 tab", label: "holds every meeting you've had", hue: "pink", rise: 250 },
-  { value: "∞", label: "meetings recorded on the free plan", hue: "cyan", rise: 360 },
+  { value: "0", label: "notes to write up by hand", rise: 150 },
+  { value: "1 tab", label: "holds every meeting you've had", rise: 250 },
+  { value: "∞", label: "meetings recorded on the free plan", rise: 360 },
 ];
-
-const RING: Record<Hue, string> = {
-  orange: "ring-brand-orange/45 bg-brand-orange/12",
-  pink: "ring-brand-pink/45 bg-brand-pink/12",
-  cyan: "ring-brand-cyan/45 bg-brand-cyan/12",
-};
-const GLOW: Record<Hue, string> = {
-  orange: "rgba(245,82,0,0.45)",
-  pink: "rgba(255,168,187,0.4)",
-  cyan: "rgba(0,190,255,0.4)",
-};
-const TRAIL: Record<Hue, string> = {
-  orange: "linear-gradient(to top, transparent, #F55200)",
-  pink: "linear-gradient(to top, transparent, #FFA8BB)",
-  cyan: "linear-gradient(to top, transparent, #00BEFF)",
-};
+const RING = "ring-white/[0.14] bg-white/[0.03]";
+const GLOW = "rgba(255,255,255,0.22)";
+const TRAIL = "linear-gradient(to top, transparent, rgba(255,255,255,0.65))";
 
 export function TeamStats() {
   const root = useRef<HTMLElement>(null);
@@ -54,34 +32,47 @@ export function TeamStats() {
 
       const mm = gsap.matchMedia();
 
-      // Desktop: pin the section and scrub the staggered rise.
-      mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
-        circles.forEach((el) => gsap.set(el, { y: Number(el.dataset.rise) || 200, autoAlpha: 0 }));
-        gsap.set(trails, { scaleY: 0, autoAlpha: 0, transformOrigin: "50% 100%" });
+      mm.add(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        () => {
+          circles.forEach((el) =>
+            gsap.set(el, { y: Number(el.dataset.rise) || 200, autoAlpha: 0 }),
+          );
+          gsap.set(trails, {
+            scaleY: 0,
+            autoAlpha: 0,
+            transformOrigin: "50% 100%",
+          });
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top top",
-            end: "+=140%",
-            scrub: 1,
-            pin: pin.current,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: root.current,
+              start: "top top",
+              end: "+=140%",
+              scrub: 1,
+              pin: pin.current,
+              anticipatePin: 1,
+              invalidateOnRefresh: true,
+            },
+          });
 
-        // Overlapping windows so each circle rises one-by-one, but the sequence stays fluid.
-        circles.forEach((circle, i) => {
-          const at = i * 0.6;
-          tl.to(circle, { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out" }, at);
-          tl.to(trails[i], { scaleY: 1, autoAlpha: 0.35, duration: 1, ease: "power3.out" }, at);
-        });
+          circles.forEach((circle, i) => {
+            const at = i * 0.6;
+            tl.to(
+              circle,
+              { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out" },
+              at,
+            );
+            tl.to(
+              trails[i],
+              { scaleY: 1, autoAlpha: 0.35, duration: 1, ease: "power3.out" },
+              at,
+            );
+          });
 
-        return () => shown(); // on revert (leaving desktop / cleanup), leave them visible
-      });
-
-      // Mobile / reduced motion: just show them, no pin, no scrub.
+          return () => shown();
+        },
+      );
       mm.add("(max-width: 1023px), (prefers-reduced-motion: reduce)", () => {
         shown();
       });
@@ -97,13 +88,21 @@ export function TeamStats() {
       >
         <GradientGrid />
         <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <h2 className="mx-auto max-w-2xl text-center font-display text-h2 font-normal text-foreground text-balance">
-            Less to do <span className="font-semibold">after every call</span>
-          </h2>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-h2 font-medium tracking-[-0.02em] text-foreground text-balance">
+              Less to do after every call.
+            </h2>
+            <p className="mt-3 text-p-regular text-muted [text-wrap:balance]">
+              The recap, action items, and answers write themselves.
+            </p>
+          </div>
 
           <div className="mt-16 grid grid-cols-1 items-end justify-items-center gap-14 sm:mt-20 sm:grid-cols-3 sm:gap-8">
             {STATS.map((s) => (
-              <div key={s.label} className="relative flex flex-col items-center">
+              <div
+                key={s.label}
+                className="relative flex flex-col items-center"
+              >
                 <div
                   className="stat-circle relative z-10 will-change-transform"
                   data-rise={s.rise}
@@ -111,10 +110,10 @@ export function TeamStats() {
                   <div
                     aria-hidden="true"
                     className="nebula pointer-events-none absolute -inset-6"
-                    style={{ ["--nebula-color" as string]: GLOW[s.hue] }}
+                    style={{ ["--nebula-color" as string]: GLOW }}
                   />
                   <div
-                    className={`relative grid aspect-square w-48 place-items-center rounded-full p-8 text-center ring-1 backdrop-blur-sm sm:w-56 ${RING[s.hue]}`}
+                    className={`relative grid aspect-square w-48 place-items-center rounded-full p-8 text-center ring-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-sm sm:w-56 ${RING}`}
                   >
                     <div>
                       <div className="font-display text-4xl font-semibold text-foreground sm:text-5xl">
@@ -129,7 +128,7 @@ export function TeamStats() {
                 <div
                   aria-hidden="true"
                   className="stat-trail mt-[-1px] h-28 w-px origin-bottom will-change-transform sm:h-36"
-                  style={{ background: TRAIL[s.hue] }}
+                  style={{ background: TRAIL }}
                 />
               </div>
             ))}
@@ -140,24 +139,18 @@ export function TeamStats() {
   );
 }
 
-/** Faint perspective grid stroked with the signature gradient, faded by a radial vignette. */
 function GradientGrid() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+    >
       <svg
-        className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2 opacity-25"
+        className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2 opacity-[0.13]"
         viewBox="0 0 100 60"
         preserveAspectRatio="xMidYMid slice"
       >
-        <defs>
-          <linearGradient id="teamstats-grid" x1="0" y1="60" x2="100" y2="0" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FFA8BB" />
-            <stop offset="0.34" stopColor="#F55200" />
-            <stop offset="0.67" stopColor="#9600FF" />
-            <stop offset="1" stopColor="#FFF58C" />
-          </linearGradient>
-        </defs>
-        <g stroke="url(#teamstats-grid)" strokeWidth="0.12">
+        <g stroke="#FAF5F5" strokeWidth="0.12">
           {Array.from({ length: 17 }, (_, i) => (
             <line key={`v${i}`} x1={i * 6.25} y1="0" x2={i * 6.25} y2="60" />
           ))}
@@ -166,7 +159,12 @@ function GradientGrid() {
           ))}
         </g>
       </svg>
-      <div className="absolute inset-0" style={{ background: "radial-gradient(circle, transparent 55%, #000 100%)" }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(circle, transparent 55%, #000 100%)",
+        }}
+      />
     </div>
   );
 }

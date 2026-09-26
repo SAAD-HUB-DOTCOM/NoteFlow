@@ -26,6 +26,15 @@ export function humanDisplayName(user: UserLike): string | null {
   return name.split(/\s+/)[0];
 }
 
+/** A real avatar URL from OAuth metadata (Google gives `picture`/`avatar_url`), or null. Used only
+ *  as a fallback when no NoteFlow Profile avatar exists — never fabricated. */
+export function sessionAvatarUrl(user: UserLike): string | null {
+  const meta = user?.user_metadata ?? {};
+  const candidate = (meta.avatar_url as string) || (meta.picture as string) || "";
+  const url = typeof candidate === "string" ? candidate.trim() : "";
+  return url && /^https?:\/\//.test(url) ? url : null;
+}
+
 /** Full display name (first + last) for the account block, or null. */
 export function fullDisplayName(user: UserLike): string | null {
   const meta = user?.user_metadata ?? {};

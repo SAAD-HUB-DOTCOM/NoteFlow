@@ -106,7 +106,7 @@ function WorkspaceInner({ meeting, readOnly }: { meeting: Meeting; readOnly: boo
                 onClick={() => setTab(t.id)}
                 className={`-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 pb-3 pt-1 text-sm font-medium transition-colors ${
                   selected
-                    ? "border-primary text-foreground"
+                    ? "border-foreground text-foreground"
                     : "border-transparent text-muted hover:text-foreground"
                 }`}
               >
@@ -114,7 +114,7 @@ function WorkspaceInner({ meeting, readOnly }: { meeting: Meeting; readOnly: boo
                 {t.badge !== undefined && (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
-                      selected ? "bg-primary/15 text-foreground" : "bg-surface text-muted"
+                      selected ? "bg-white/10 text-foreground ring-1 ring-white/20" : "bg-surface text-muted"
                     }`}
                   >
                     {t.badge}
