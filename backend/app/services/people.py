@@ -1,19 +1,3 @@
-"""Phase 6C — conservative cross-meeting identity resolution + People aggregation.
-
-Turns  Transcript speaker → MeetingParticipant  into  … → Person  WITHOUT guessing. A shared
-display name or speaker label NEVER creates a cross-meeting identity. Evidence priority, most to
-least trustworthy:
-
-  1. stable provider participant id  — matched against KNOWN identities (never invents a Person on
-     its own; Recall participant ids are not guaranteed stable across meetings)
-  2. normalized email                — matched, and trustworthy enough to auto-create a Person
-  3. explicit manual association      — the reliable path today
-  4. otherwise                        — person_id stays null (correct, not a failure)
-
-Raw participant data (provider_participant_id, display_name, speaker_label, email) is preserved on
-MeetingParticipant even after it links to a Person — linking only sets person_id. Every operation
-is owner-scoped: a user can never read, link, unlink, or merge another owner's people/participants.
-"""
 import logging
 import re
 
@@ -38,7 +22,6 @@ def normalize_email(raw) -> str | None:
     return e if _EMAIL_RE.match(e) else None
 
 
-# ── identity evidence helpers ─────────────────────────────────────────────────────
 
 def _identity_person_id(db, owner_user_id: str, kind: str, provider: str, value: str) -> str | None:
     row = (
@@ -51,9 +34,6 @@ def _identity_person_id(db, owner_user_id: str, kind: str, provider: str, value:
 
 def _add_identity(db, person: Person, kind: str, value: str, *, provider: str = "",
                   source: str = "ingestion", confidence: str = "high") -> bool:
-    """Attach identity evidence to `person` unless it is already claimed by ANOTHER person.
-    Never steals evidence (that would be a silent merge). True if the evidence now belongs to
-    this person."""
     provider = provider or ""
     existing = (
         db.query(PersonIdentity)
@@ -70,11 +50,8 @@ def _add_identity(db, person: Person, kind: str, value: str, *, provider: str = 
     return True
 
 
-# ── resolution (ingestion path) ────────────────────────────────────────────────────
 
 def resolve_participant(db, meeting: Meeting, participant: MeetingParticipant) -> str | None:
-    """Resolve ONE observed participant to a Person using trustworthy evidence only. Idempotent —
-    an already-linked participant is left untouched. Returns the person_id or None."""
     if participant.person_id:
         return participant.person_id
 
@@ -83,7 +60,6 @@ def resolve_participant(db, meeting: Meeting, participant: MeetingParticipant) -
     ppid = participant.provider_participant_id
     email = normalize_email(participant.email)
 
-    # 1. stable provider participant id → link to a KNOWN identity only (never auto-create).
     if ppid:
         pid = _identity_person_id(db, owner, "provider_participant_id", provider, ppid)
         if pid:
@@ -93,7 +69,6 @@ def resolve_participant(db, meeting: Meeting, participant: MeetingParticipant) -
             db.flush()
             return pid
 
-    # 2. normalized email → link if known, else auto-create (email is a real human identity).
     if email:
         pid = _identity_person_id(db, owner, "email", "", email)
         if pid:
@@ -276,7 +251,10 @@ def person_meetings(db, owner_user_id: str, person: Person):
         db.query(Meeting)
         .join(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
         .filter(MeetingParticipant.person_id == person.id, Meeting.owner_user_id == owner_user_id)
-        .distinct()
+        # GROUP BY the PK dedupes (a person may have >1 participant row in one meeting) AND lets
+        # Postgres ORDER BY the meeting's own columns — unlike SELECT DISTINCT + ORDER BY coalesce(),
+        # which Postgres rejects (SQLite allowed it, so tests didn't catch it).
+        .group_by(Meeting.id)
         .order_by(func.coalesce(Meeting.started_at, Meeting.created_at).desc())
         .all()
     )
