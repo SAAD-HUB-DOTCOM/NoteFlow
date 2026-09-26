@@ -164,8 +164,7 @@ export function RealMeetingWorkspace({ meetingId }: { meetingId: string }) {
               "linear-gradient(to bottom, #000 0%, #000 26%, transparent 76%)",
           }}
         />
-      </div>
-      ¥{" "}
+      </div>{" "}
       <header className="relative z-10 shrink-0 px-5 pb-4 pt-4 sm:px-8">
         <Link
           href="/app/meetings"

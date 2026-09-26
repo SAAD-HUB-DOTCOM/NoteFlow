@@ -7,12 +7,10 @@ import { ShareButton } from "@/components/ShareButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { MeetingWorkspace } from "@/components/workspace/MeetingWorkspace";
 
-/** Pre-render every seeded meeting's workspace at build time. */
 export function generateStaticParams() {
   return meetings.map((m) => ({ id: m.id }));
 }
 
-// The meeting set is fixed/seeded — any other id is a genuine 404 (proper status, not a soft-404).
 export const dynamicParams = false;
 
 export default async function MeetingPage({
