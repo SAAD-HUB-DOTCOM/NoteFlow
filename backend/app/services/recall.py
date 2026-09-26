@@ -48,8 +48,11 @@ class RecallService:
             "bot_name": bot_name,
             "recording_config": {
                 "transcript": {
-                    # low-latency streaming only supports English; Recall 400s without this.
-                    "provider": {"recallai_streaming": {"mode": "prioritize_low_latency", "language_code": "en"}},
+                    # Multilingual capture: low-latency mode is English-only, so use
+                    # prioritize_accuracy with language_code "auto" (Recall auto-detects the
+                    # spoken language). No language is hard-coded — English and non-English
+                    # meetings both work without the user choosing one before recording.
+                    "provider": {"recallai_streaming": {"mode": "prioritize_accuracy", "language_code": "auto"}},
                     "diarization": {"use_separate_streams_when_available": True},
                 },
             },
