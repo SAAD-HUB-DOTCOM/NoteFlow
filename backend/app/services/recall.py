@@ -48,7 +48,8 @@ class RecallService:
             "bot_name": bot_name,
             "recording_config": {
                 "transcript": {
-                    "provider": {"recallai_streaming": {"mode": "prioritize_low_latency"}},
+                    # low-latency streaming only supports English; Recall 400s without this.
+                    "provider": {"recallai_streaming": {"mode": "prioritize_low_latency", "language_code": "en"}},
                     "diarization": {"use_separate_streams_when_available": True},
                 },
             },
